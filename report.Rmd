@@ -1,0 +1,40 @@
+---
+title: 'CompImpact: Computational Tools for Assessing the Social Impact of CSS Research'
+author: "Daniel J. Hicks"
+output: 
+    pdf_document:
+        fig_caption: true
+---
+
+# Executive Summary #
+
+*[write this]*
+
+
+# Introduction #
+
+Over the past forty years, *[something about a shift to research that has a social impact; maybe ref Silver Book?]*.  While researchers at the EPA have always been dedicated to research that aims to promote the public good *[fix this]*, they have placed less emphasis on developing empirical methods to measure and assess the social impacts of their work.  
+
+For many areas of EPA research, there are established pathways for deploying research products in regulatory contexts.  The social impact of these research areas can be measured simply in terms of the impacts of the downstream regulation. Conventional air quality research or chemical risk assessments might be good examples of this "normal regulatory science."  However, other research areas — such as research that is actively developing new tools for public health or high-throughput toxicology — do not yet have established regulatory connections or simple regulatory metrics.  (The social impact of a screening prioritization decision for a potential endocrine disruptor, for example, is itself difficult to define.)  Assessing the social impact of these research areas requires more subtle tools.  
+
+This report explores two quantitative approaches to assessing the social impact of CSS research.  Both approaches rely on data-intensive, computational tools.  The report examines data and model-based challenges to deploying and interpreting the outputs of these tools; besides reporting some preliminary findings, this report also offers suggestions for how EPA can improve its ability to use these tools to assess and improve the social impact of its research.  
+
+*[more details]*
+
+```{r general_setup, echo = FALSE, warning = FALSE, messages = FALSE}
+fig.height = 2.5
+fig.width = 1.5*fig.height
+font_size = 10
+knitr::opts_chunk$set(dev = 'tikz',
+			   fig.height = fig.height, fig.width = fig.width,
+			   fig.align='center', fig.pos = 't',
+			   sanitize = TRUE,
+			   echo = FALSE,
+			   warning = FALSE, messages = FALSE
+			   )
+options(digits = 1, xtable.comment = FALSE)
+```
+
+*[sections in separate Rmds]*
+```{r, child = 'altmetrics.Rmd'}
+```
