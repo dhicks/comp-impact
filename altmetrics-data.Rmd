@@ -87,12 +87,14 @@ dataf = dataf %>% filter(!(doi %in% nonepa))
 ```{r}
 dataf %>% select(endnote:stics.uq) %>% summarize_each(funs = 'sum') %>% 
 	kable(col.names = gsub('\n', ' ', db_names), 
-		  caption = 'Publications with DOIs found in each database/search')
+		  format = 'latex',
+		  caption = 'Publications with DOIs found in each database/search 
+		  				\\label{tab.test}')
 ```
 
-Table *[1]* gives an overview of the number of DOIs included in each database/search.  Combining the results of all four database/searches yields a total of `r length(unique(dataf$doi))` distinct DOIs.  Both of the two STICS searches include a majority of these DOIs; the EndNote database contains somewhat fewer than half; and the NCCT database contains just under 25% of all DOIs.  
+Table \ref{tab.test} gives an overview of the number of DOIs included in each database/search.  Combining the results of all four database/searches yields a total of `r length(unique(dataf$doi))` distinct DOIs.  Both of the two STICS searches include a majority of these DOIs; the EndNote database contains somewhat fewer than half; and the NCCT database contains just under 25% of all DOIs.  
 
-```{r papers_dbs, fig.width = 1.5 * fig.width, fig.cap = 'Distribution of individual papers across the four database/searches. **A**: Each paper is represented by a single row; a red cell indicates that the given paper is included in the given database/search. **B**: Each paper is represented by an unbroken line across the parallel coordinates. Y-axis indicates whether the given paper is included in the given database/search.'}
+```{r papers_dbs, fig.width = 1.5 * fig.width, fig.cap = 'Distribution of individual papers across the four database/searches. \\textbf{A}: Each paper is represented by a single row; a red cell indicates that the given paper is included in the given database/search. \\textbf{B}: Each paper is represented by an unbroken line across the parallel coordinates. Y-axis indicates whether the given paper is included in the given database/search. \\label{fig.papers_dbs}'}
 db_pubs_1 = ggplot(data = {dataf %>% melt(id.vars = 'doi', 
 										  variable.name = 'database')},
 	   aes(doi, database, fill = value)) +
@@ -111,7 +113,7 @@ db_pubs_2 = ggplot(data = {dataf %>% melt(id.vars = 'doi',
 plot_grid(db_pubs_1, db_pubs_2, ncol = 2, labels = 'AUTO', align = 'v')
 ```
 
-Figure *[1]* shows the distribution of every individual paper across the four database/searches, as lit cells in a heatmap and as lines across parallel coordinates.  These plots suggest that the two STICS searches include almost exactly the same publications, and that there is relatively little overlap between NCCT and the other database/searches.  Tables *[2]* and *[3]* make these same points quantitatively.  
+Figure \ref{fig.papers_dbs} shows the distribution of every individual paper across the four database/searches, as lit cells in a heatmap and as lines across parallel coordinates.  These plots suggest that the two STICS searches include almost exactly the same publications, and that there is relatively little overlap between NCCT and the other database/searches.  Tables \ref{tab.dist} and \ref{tab.STICSconcordance} make these same points quantitatively.  
 
 ```{r}
 # dataf %>% select(endnote:stics.uq) %>% summary
@@ -123,14 +125,18 @@ dist %>% kable(
 		col.names = c('STICS (Quoted)', 'STICS (Unquoted)', 'EndNote', 
 						'NCCT', 'n'), 
 		align = c(rep('c', 4), 'r'),
-		caption = 'Distribution of papers across the four database/searches')
+		format = 'latex',
+		caption = 'Distribution of papers across the four database/searches
+					\\label{tab.dist}')
 dist = dataf %>% group_by(stics.q, stics.uq) %>% summarize(n = n())
 dist[dist == FALSE] = ''
 dist[dist == TRUE] = 'X'
 dist %>% kable(
 	col.names = c('STICS (Quoted)', 'STICS (Unquoted)', 'n'),
 	align = c('c', 'c', 'r'),
-	caption = 'Concordance between quoted and unquoted STICS search results')
+	format = 'latex',
+	caption = 'Concordance between quoted and unquoted STICS search results
+					\\label{tab.STICSconcordance}')
 ```
 
 ```{r export, eval=FALSE}

@@ -1,17 +1,26 @@
 ---
 output:
-  html_document: default
   pdf_document:
     fig_caption: yes
+    keep_tex: true
+  html_document: default
+geometry: margin=1.5in
+header-includes:
+    - \usepackage{hyperref}
 ---
 ```{r eval = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 fig.height = 2.5
 fig.width = 1.5 * fig.height
 font_size = 8
 
-knitr::opts_chunk$set(fig.height = fig.height, fig.width = fig.width, 
-					  echo = FALSE, message=FALSE, warning=FALSE)
-
+knitr::opts_chunk$set(dev = 'tikz',
+			   fig.height = fig.height, fig.width = fig.width,
+			   fig.align='center', fig.pos = 't',
+			   sanitize = TRUE,
+			   echo = FALSE,
+			   warning = FALSE, message = FALSE
+			   )
+options(digits = 1, xtable.comment = FALSE)
 ```
 
 # Study 1: Altmetrics #
@@ -28,8 +37,13 @@ Large-a "Altmetrics" refers to "Altmetric.com," a UK-based company that develops
 
 Given the set of DOIs for the target papers, a Python script queries the Altmetrics API, retrieving data on every tweet that references one of the target papers.  The analysis then considers the number of tweets per paper, the number of CSS-related tweets per Twitter account, the estimated reach per paper and over time, and the delay (time between publication and first tweet) and lifespan (time between first and last tweet) for each Tweeted paper.  
 
-*[reference set]*
-
 ```{r altmetrics-analysis, child = 'altmetrics-analysis.Rmd'}
 ## Results ##
 ```
+
+## Discussion ##
+
+Only about half of all CSS papers (`r nrow(papers)/nrow(dataf) * 100`%) received any tweets at all, and many of these papers received only a single tweet.  The distribution of tweets, delay, and lifespan was highly skewed with a long right tail; that is, while many papers receive a few tweets for a short period around the time they are published, a few papers have an especially high number of tweets, a long delay before receiving their first tweet, or are tweeted about for a long period of time.  Only a single paper received more than 15 tweets.  At the same time, these tweets have a large reach, on the order of 100-10,000 people per paper.  
+
+J. Britt Holbrook (personal communication) has proposed that researchers could use altmetrics to identify future opportunities to increase the social impact of their work.  Tables \ref{tab.high_tweet_papers} and \ref{tab.high_tweeters} may be especially useful here.  Table \ref{tab.high_tweet_papers} may indicate which topics or CSS project areas tend to attract relatively broad attention on social media; strategically tweeting about these topics or project areas in the future could be an effective way to increase the social media presence of CSS research.  Similarly, table \ref{tab.high_tweeters} indicates Twitter accounts/users who tend to pay attention to CSS research.  CSS communications staff could engage with these accounts/users, encouraging them to tweet about CSS research more in the future.  
+
