@@ -40,9 +40,8 @@ folder = 'publications data/scraped pubs/'
 ids_css = fromJSON(file = paste(folder, 'ids_css.json', sep = '')) %>% unique
 ids_css = data.frame(doi = ids_css, endnote = TRUE, stringsAsFactors = FALSE)
 ## Replace some mis-stored DOIs
-ids_css$doi = gsub('doi:10.1016/j.tox.2015.03.011', '10.1016/j.tox.2015.03.011', ids_css$doi)
-ids_css$doi = gsub('http://dx.doi.org/10.1016/j.tox.2015.03.011', '10.1016/j.tox.2015.03.011', ids_css$doi)
-ids_css$doi = gsub('http://dx.doi.org/10.1016/j.compchemeng.2015.04.020', '10.1016/j.compchemeng.2015.04.020', ids_css$doi)
+ids_css$doi = gsub('doi:', '', ids_css$doi)
+ids_css$doi = gsub('http://dx.doi.org/', '', ids_css$doi)
 
 ids_ncct = fromJSON(file = paste(folder, 'ids_ncct.json', sep = '')) %>% unique
 ids_ncct = data.frame(doi = ids_ncct, ncct = TRUE, stringsAsFactors = FALSE)
