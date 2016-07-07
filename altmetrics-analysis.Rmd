@@ -1,0 +1,289 @@
+## Results ##
+
+```{r, eval = FALSE}
+## Run the Python scripts with the Altmetrics queries
+system2('python3', args = 'publications\\ data/scrape.py')
+```
+
+```{r setup_analysis} 
+library(cowplot)
+library(dplyr)
+library(knitr)
+	# opts_chunk$set(dev = 'tikz', 
+	# 			   fig.height = 3, fig.width = 4, fig.align='center', 
+	# 			   sanitize = TRUE,
+	# 			   echo = FALSE,
+	# 			   warning = FALSE, messages = FALSE
+	# 			   )
+library(lubridate)
+library(rjson)
+library(xtable)
+# options(digits = 1, xtable.comment = FALSE)
+```
+```{r}
+## Load all of the DOIs, even the ones that weren't in Altmetrics
+infiles = 'publications data/scraped pubs/combined dois.json'
+all_dois <- c()
+for (infile in infiles) {
+	all_dois <- c(all_dois, fromJSON(file = infile))
+}
+all_dois <- unique(all_dois)
+
+## Load data, with mutations for R data types
+folder = 'publications data/twitter/'
+papers <- read.csv(paste(folder, 'metadata.csv', sep = ''), 
+				   stringsAsFactors = FALSE) %>%
+		mutate(n_tweets = as.integer(ifelse(is.na(n_tweets), 0, n_tweets)), 
+			   first_seen = ymd_hms(first_seen), 
+			   published = ymd_hms(published), 
+			   year = floor_date(published, unit = 'year'))
+tweets <- read.csv(paste(folder, 'tweets.csv', sep = '')) %>%
+		mutate(timestamp = ymd_hms(timestamp))
+tweeters <- read.csv(paste(folder, 'tweeters.csv', sep = ''))
+```
+
+A total of `r length(all_dois)` DOIs for CSS publications were identified.  Altmetrics returned responses for `r nrow(papers)` of these DOIs, of which 
+`r {papers %>% filter(n_tweets > 0) %>% nrow}` 
+(`r (1-ecdf(papers$n_tweets)(0))*100`%) 
+had 1 or more tweets.  `r {papers %>% filter(n_tweets >= 10) %>% nrow}` papers had 10 or more tweets.  
+
+```{r fig.cap = 'Histogram of tweets per paper'}
+## Histogram of tweets per paper
+ggplot(data = papers, aes(x = n_tweets)) + geom_bar(fill = 'blue') + 
+	scale_x_log10(name = 'no. tweets', breaks = c(1, seq(10, 100, 20))) +
+	ylab('no. papers')
+## Scatterplot of n tweets vs. year
+# ggplot(data = papers, aes(x = year, y = n_tweets)) + 
+# 	geom_point()
+```
+```{r fig.cap = 'Number of tweets per month'}
+## Plot tweets over time
+tweets <- tweets %>% mutate(month = round_date(timestamp, unit = 'month'))
+ggplot(data = tweets, aes(x = month)) + 
+	#geom_line(stat = 'count', color = 'red') +
+	geom_bar(fill = 'red') +
+	geom_hline(yintercept = 0) +
+	theme(axis.text.x=element_text(angle = 30, hjust = 1)) +
+	ylab('no. tweets')
+```
+*[column names]*
+```{r results = 'asis'}
+## List of relatively highly-tweeted papers
+papers %>% filter(n_tweets >= 10) %>% select(doi, title, n_tweets) %>%
+	arrange(desc(n_tweets)) %>%
+	xtable(align = 'llp{3in}r', 
+		   caption = 'Highly-tweeted papers') %>% 
+	print(include.rownames = FALSE)
+```
+
+Altmetrics returned a total of `r nrow(tweets)` tweets of CSS publications.  There is considerable variation in the number of tweets over time.  Tweets are made in `r tweets$account_loc %>% unique %>% length` different countries, though `r {tweets %>% filter(account_loc == '') %>% nrow} / nrow(tweets) * 100`% have no country information.  
+
+```{r eval = FALSE}
+## Table of countries with number of tweets and percentage of all tweets
+tweets %>% group_by(account_loc) %>% 
+	summarize(n_tweets = n()) %>% 
+	mutate(tot_tweets = sum(n_tweets), perc_tweets = n_tweets / tot_tweets * 100) %>%
+	arrange(desc(perc_tweets))
+```
+```{r fig.cap = 'Number of tweets per country, countries with at least 5 tweets'}
+## Histogram of countries with at least 5 tweets
+ggplot(data = {tweets %>% group_by(account_loc) %>% 
+		summarize(n_tweets = n()) %>%
+		mutate(location = reorder(account_loc, n_tweets)) %>%
+		filter(n_tweets >= 5, account_loc != '')}, 
+		aes(x = location, y = n_tweets, fill = location)) +
+	geom_bar(stat = 'identity') +
+	scale_fill_discrete(guide = FALSE) +
+	coord_flip()
+## Tweets over time, by location
+##  Needs filters to be useful! 
+#ggplot(data = tweets, aes(x = month, color = account_loc)) + geom_line(stat = 'count')
+```
+
+`r nrow(tweeters)` Twitter accounts made a total of `r sum(tweeters$n_tweets)` tweets of CSS papers.  `r {tweeters %>% filter(n_tweets == 1) %>% nrow}` accounts (`r ecdf(tweeters$n_tweets)(2) * 100`%) made only a single tweet of a CSS paper, while `r {tweeters %>% filter(n_tweets >= 5) %>% nrow}` accounts made 5 or more tweets.  
+
+```{r fig.cap = 'Histogram of tweets per account'}
+## Histogram of tweeters
+ggplot(data = tweeters, aes(x = n_tweets)) + geom_bar() +
+	scale_x_log10(breaks=c(1, seq(2, 18, by = 2)), name = 'no. tweets') +
+	ylab('no. accounts')
+```
+
+*[column names]*
+```{r results = 'asis'}
+## List of relatively high number of tweeters
+tweeters %>% filter(n_tweets >= 5) %>% 
+	select(account, n_tweets, n_followers, location) %>%
+	arrange(desc(n_tweets)) %>% 
+	kable
+```
+
+Many of these relatively high-tweeting accounts promote recent publications in a scientific topic, in a journal, or of potential interest to members of a professional society.  
+
+
+### Reach ###
+
+In marketing, *reach* refers to the size of the potential audience.  The Altmetrics API provides the number of followers at the time of each individual tweet.  These follower counts can be used to estimate reach at the paper level and over time.  (Note that the followers for two given tweets can overlap, and so these are likely to be overestimates.)  Aggregated both ways, reach varies over more than two orders of magnitude.  
+
+```{r fig.width = 2*fig.width, fig.caption = 'Kernel density estimates of estimated reach. **A** Reach per paper. **B** Reach per month.'}
+## Estimate reach per paper
+reach_by_paper <- tweets %>% group_by(paper_doi) %>% 
+						summarize(reach = sum(account_followers))
+## Kernel density estimate plot
+reach_paper_kde = ggplot(data = reach_by_paper, aes(x = reach)) + 
+	geom_density() +
+	scale_x_log10(breaks = 10^(0:5))
+## ECDF plot
+# ggplot(data = reach_by_paper, aes(x = reach)) + stat_ecdf() +
+# 	scale_x_log10(breaks = 10^(0:5))
+
+## Estimate reach per month
+reach_by_month <- tweets %>% group_by(month) %>%
+						summarize(reach = sum(account_followers))
+## Kernel density estimate plot
+reach_month_kde = ggplot(data = reach_by_month, aes(x = reach)) + 
+	geom_density() +
+	scale_x_log10(breaks = 10^(0:5))
+## ECDF plot
+# ggplot(data = reach_by_month, aes(x = reach)) + stat_ecdf() + 
+# 	scale_x_log10(breaks = 10^(0:5))
+plot_grid(reach_paper_kde, reach_month_kde, labels = 'AUTO')
+```
+\
+
+```{r eval = FALSE}
+## Reach by month, plotted over time
+ggplot(data = reach_by_month, aes(x = month, y = reach)) +
+	#geom_line(color = 'red') +
+	geom_bar(fill = 'blue', stat = 'identity', position = 'identity') +
+	geom_hline(yintercept = 0) +
+	scale_y_log10(breaks = 10^(0:5)) +
+	theme(axis.text.x=element_text(angle = 30, hjust = 1))
+```
+
+
+### Delay and Lifespan ###
+
+*[details for every plot below]*
+
+```{r}
+## Identify the earliest and latest tweet for each paper
+##  and calculate delay and lifespan
+papers <- left_join(papers, 
+				  {tweets %>% group_by(paper_doi) %>% 
+				  		summarize(first_tweet = min(timestamp), 
+				  				  last_tweet = max(timestamp))}, 
+				  by = c('doi' = 'paper_doi')) %>%
+				mutate(delay = difftime(first_tweet, published, 
+										units = 'days'),
+					   lifespan = difftime(last_tweet, first_tweet, 
+					   					units = 'days')
+					   )
+```
+
+*Delay* can be defined as the time between publication date (as recorded in the Altmetrics metadata) and the first tweet.  Delay had a mean of `r mean(papers$delay, na.rm = T)` days and median of `r median(papers$delay, na.rm = T)` days, with an interquartile range of `r IQR(papers$delay, na.rm = T)` days.  `r ecdf(papers$delay)(7) * 100`% of papers had a delay of less than 7 days; notably, `r ecdf(papers$delay)(0) * 100`% of papers had a negative delay, indicating that the paper was first tweeted before it was officially published.  No relationship was identified between delay and the total number of tweets received by a paper.  
+
+```{r delay}
+## KDE of delay
+ggplot(data = papers, aes(x = delay)) + 
+	geom_density(alpha = .5, position = 'stack') +
+	geom_rug() +
+	xlab('delay (days)')
+	#coord_cartesian(xlim = c(0, 28))
+
+## Number of tweets vs. delay
+xmin <- 0; xmax <- 14*7; ymin <- 0; ymax <- 20
+tweets_delay_plot <- ggplot(data = papers,
+							aes(x = delay, y = n_tweets)) +
+	geom_point(position = 'jitter') +
+	geom_rect(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, 
+				  fill = NA, linetype = 'dashed', color = 'gray', 
+				  alpha = .05)
+tweets_delay_all <- tweets_delay_plot + 
+		stat_smooth(method = 'lm', alpha = .1) +
+		coord_cartesian(ylim = c(0, 80))
+tweets_delay_zoom <- tweets_delay_plot + 
+	stat_smooth(method = 'lm', alpha = .1) + 
+	coord_cartesian(xlim = c(xmin, xmax), ylim = c(ymin, ymax))
+tweets_delay_all; tweets_delay_zoom
+#plot_grid(tweets_delay_all, tweets_delay_zoom, nrow = 2)
+## There's no evidence of a relationship here
+lm(data = papers, n_tweets ~ delay) %>% summary
+
+## Table of week vs. percentile
+data.frame(week = seq(0, 4)) %>% 
+	mutate(percentile = ecdf(papers$delay)(week*7)*100) %>%
+	kable(caption = 'Delay, cumulative percentiles, by week')
+## Table of percentile vs. day
+# data.frame(decimal = seq(.10, .90, by = .10)) %>%
+# 	transmute(percentile = decimal * 100, 
+# 				days = as.numeric(quantile(papers$delay, 
+# 									  probs = decimal, na.rm = TRUE))) %>%
+# 	kable
+```
+
+Similarly, *lifespan* can be defined as the time between the first and last tweet.  Lifespan had a mean of `r mean(papers$lifespan, na.rm = T)` days and median of `r median(papers$lifespan, na.rm = T)*24` *hours*, with an interquartile range of `r IQR(papers$lifespan, na.rm = T)` days.  `r ecdf(papers$lifespan)(7) * 100`% of papers had a lifespan of less than 7 days.  No relationship was identified between lifespan and the total number of tweets received by a paper. 
+
+```{r lifespan}
+## KDE of lifespan
+ggplot(data = papers, aes(x = lifespan)) + 
+	geom_density(alpha = .5, position = 'stack') +
+	geom_rug() +
+	xlab('lifespan (days)')
+#	coord_cartesian(xlim = c(0, 100)) + 
+
+## Number of tweets vs. lifespan
+xmin <- 0; xmax <- 14*7; ymin <- 0; ymax <- 20
+tweets_span_plot <- ggplot(data = papers,
+							aes(x = lifespan, y = n_tweets)) +
+		geom_point(position = 'jitter') +
+		geom_rect(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, 
+				  fill = NA, linetype = 'dashed', color = 'gray', 
+				  alpha = .05) 
+tweets_span_all <- tweets_span_plot + 
+		stat_smooth(method = 'lm', alpha = .1)
+tweets_span_zoom <- tweets_span_plot + 
+	stat_smooth(method = 'lm', alpha = .1) + 
+	coord_cartesian(xlim = c(xmin, xmax), ylim = c(ymin, ymax))
+tweets_span_all; tweets_span_zoom
+#plot_grid(tweets_span_all, tweets_span_zoom, nrow = 2)
+## There's no evidence of a relationship here, either
+lm(data = papers, n_tweets ~ lifespan) %>% summary
+
+## Cumulative percentile tables
+data.frame(week = seq(0, 14, by = 2)) %>% 
+	mutate(percentile = ecdf(papers$lifespan)(week*7) * 100) %>%
+	kable(caption = 'Lifespan, cumulative percentiles, by week')
+# data.frame(decimal = seq(.10, .90, by = .20)) %>%
+# 	transmute(percentile = decimal * 100, 
+# 			  days = as.numeric(quantile(papers$lifespan, 
+# 			  						   probs = decimal, na.rm = TRUE))) %>%
+# 	kable
+```
+
+Finally, there is no observed relationship between delay and lifespan.  
+
+```{r}
+## Delay vs. lifespan
+xmin <- 0; xmax <- 20*7; ymin <- 0; ymax <- 500
+delay_span_plot <- ggplot(data = papers, aes(delay, lifespan)) + 
+		geom_point(position = 'jitter') +
+		geom_rect(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, 
+				  fill = NA, linetype = 'dashed', color = 'gray', 
+				  alpha = .05) + 
+		stat_smooth(method = 'lm')
+delay_span_all <- delay_span_plot
+delay_span_zoom <- delay_span_plot + 
+	coord_cartesian(xlim = c(xmin, xmax), ylim = c(ymin, ymax))
+delay_span_all; delay_span_zoom
+#lm(data = papers, as.numeric(lifespan) ~ as.numeric(delay)) %>% summary
+```
+
+
+
+
+
+
+
+
+
