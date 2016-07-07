@@ -7,13 +7,9 @@ import pandas as pd
 ## Infile: a CSV of NCCT publications
 infile = 'database outputs/ToxCastTox21_sifter.csv'
 ## Outfile: list of IDs
-outfile = 'scraped pubs/ids_ncct.json'
+outfile = 'scraped pubs/ids_ncct.csv'
 
 readdata = pd.read_csv(infile, encoding = 'mac_roman')
+readdata[['DOI', 'Pub Yr']].to_csv(outfile)
 
-ids = readdata['DOI'].astype(str).drop_duplicates().tolist()
-
-with open(outfile, 'w') as writefile:
-	json.dump(ids, writefile)
-
-print('Extracted ' + str(len(ids)) + ' IDs to ' + outfile)
+print('Extracted ' + str(len(readdata)) + ' IDs to ' + outfile)

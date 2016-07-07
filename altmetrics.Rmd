@@ -24,7 +24,7 @@ The first step in any bibliometrics analysis, then, is determining the DOI for e
 STICS [Science and Technical Information Clearance System] is designed to support the clearance and approval of research products before they are submitted to a journal for publication.  STICS satisfies criteria (b) and (c), and thus can export a list of all research products associated with CSS.  However, presumably because it is designed for use only pre-publication, STICS does not include DOIs. 
 After examining the metadata outputs from STICS, I decided that the most efficient way to identify DOIs corresponding to STICS records would be to search for matching titles in Scopus, a large database of research publications similar to Web of Science or PubMed.  Python scripts were prepared to conduct both "quoted" and "unquoted" searches for each research product title.  A quoted search searches for the title as a complete phrase; for example, a quoted search for the title "Recent Work in High-Throughput Toxicology" would not match "Recent Work for High-Throughput Toxicology."  An unquoted search matches the individual terms; for example, "Recent Work in High-Throughput Toxicology" *would* match with "Recent Work for High-Throughput Toxicology" (assuming that the search system ignored very common words such as "for" and "in").  An unquoted search is useful for catching publications for which the title had been changed sometime during the review process, or for handling encoding errors, as in the title "A Framework for &quot;Fit for Purpose&quot; Dose Response Assessment"; however, an unquoted search is obviously more likely to return incorrect matches.  
 
-In what follows, the results of these searches are compared with two manually-curated databases of publications:  an EndNote database sporadically updated by CSS staff and a database of NCCT publications curated by Monica Linnenbrink.  Both of the latter two databases include DOIs, but neither is intended to be a comprehensive collection of all CSS publications.  
+In what follows, the results of these searches are compared with two manually-curated databases of publications:  an EndNote database sporadically updated by CSS staff and a database of NCCT publications curated by Monica Linnenbrink.  Both of the latter two databases include DOIs, but neither is intended to be a comprehensive collection of all CSS publications.  In particular, the NCCT database includes several publications that predate the creation of the CSS national research program in 2011; these publications were excluded from analysis.  
 
 *[call Python scripts to build `scraped pubs` files]*
 
@@ -44,7 +44,9 @@ ids_css = data.frame(doi = ids_css, endnote = TRUE, stringsAsFactors = FALSE)
 ids_css$doi = gsub('doi:', '', ids_css$doi)
 ids_css$doi = gsub('http://dx.doi.org/', '', ids_css$doi)
 
-ids_ncct = fromJSON(file = paste(folder, 'ids_ncct.json', sep = '')) %>% unique
+ids_ncct = read.csv(paste(folder, 'ids_ncct.csv', sep = ''), 
+					stringsAsFactors = FALSE)
+ids_ncct = ids_ncct['Pub.Yr' >= 2011]$DOI
 ids_ncct = data.frame(doi = ids_ncct, ncct = TRUE, stringsAsFactors = FALSE)
 
 stics_q = read.csv(paste(folder, 'stics_q.csv', sep = ''), 
@@ -78,7 +80,7 @@ nonepa = read.csv(paste(folder, 'poss nonepa.csv', sep = '')) %>% filter(!epa) %
 dataf = dataf %>% filter(!(doi %in% nonepa))
 ```
 
-```{r }
+```{r}
 dataf %>% select(endnote:stics.uq) %>% summarize_each(funs = 'sum') %>% 
 	kable(col.names = db_names, 
 		  caption = 'Publications with DOIs found in each database/search')
