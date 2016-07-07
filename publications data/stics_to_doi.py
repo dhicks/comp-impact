@@ -4,7 +4,7 @@ import pandas as pd
 import re
 import requests
 
-from api_key import MY_API_KEY
+from api_key import ALTMETRICS_API_KEY
 
 def get_query (query):
 	response = requests.get(query)
@@ -64,8 +64,8 @@ data_uq = []
 base_query = 'http://api.elsevier.com/content/search/scopus?'
 for title in titles:
 	print(title)
-	query_q = base_query + 'query=title("' + title + '")&' + 'apiKey=' + MY_API_KEY
-	query_uq = base_query + 'query=title(' + title + ')&' + 'apiKey=' + MY_API_KEY
+	query_q = base_query + 'query=title("' + title + '")&' + 'apiKey=' + ALTMETRICS_API_KEY
+	query_uq = base_query + 'query=title(' + title + ')&' + 'apiKey=' + ALTMETRICS_API_KEY
 
 	quoted = get_query(query_q)
 	quoted = parse_response(quoted)
