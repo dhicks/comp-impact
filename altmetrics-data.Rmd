@@ -22,7 +22,12 @@ After examining the metadata outputs from STICS, I decided that the most efficie
 
 In what follows, the results of these searches are compared with two manually-curated databases of publications:  an EndNote database sporadically updated by CSS staff and a database of NCCT publications curated by Monica Linnenbrink.  Both of the latter two databases include DOIs, but neither is intended to be a comprehensive collection of all CSS publications.  In particular, the NCCT database includes several publications that predate the creation of the CSS national research program in 2011; these publications were excluded from analysis.  
 
-*[call Python scripts to build `scraped pubs` files]*
+```{r, eval = FALSE}
+## Run the Python scripts to extract cleaner data files from the db outputs
+system2('python3', 'publications\\ data/extract_ids_CSS.py')
+system2('python3', 'publications\\ data/extract_ids_NCCT.py')
+system3('python3', 'publications\\ data/stics_to_doi.py')
+```
 
 ```{r setup_data}
 library(cowplot)
