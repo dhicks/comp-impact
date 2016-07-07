@@ -1,12 +1,17 @@
 ---
-output: 
-    pdf_document:
-        fig_caption: true
+output:
+  html_document: default
+  pdf_document:
+    fig_caption: yes
 ---
-```{r eval = TRUE}
+```{r eval = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 fig.height = 2.5
 fig.width = 1.5 * fig.height
-font_size = 10
+font_size = 8
+
+knitr::opts_chunk$set(fig.height = fig.height, fig.width = fig.width, 
+					  echo = FALSE, message=FALSE, warning=FALSE)
+
 ```
 
 # Study 1: Altmetrics #
@@ -15,7 +20,8 @@ The term "altmetrics" has two distinct meanings.  Small-a "altmetrics" is a port
 
 Large-a "Altmetrics" refers to "Altmetric.com," a UK-based company that develops an integrated set of small-a altmetrics and makes them available programmatically using a web-based API [application programming interface].  Large-a Altmetrics focuses on social media references to research publications, such as tweets and blog posts.  The analysis explored here uses Altmetrics' tweets data to examine the social media impact of CSS publications.  
 
-```{r altmetrics-data, child = 'altmetrics-data.Rmd'}
+```{r altmetrics-data, child = 'altmetrics-data.Rmd', eval = TRUE}
+## Data ##
 ```
 
 ## Methods ##
@@ -24,3 +30,6 @@ Given the set of DOIs for the target papers, a Python script queries the Altmetr
 
 *[reference set]*
 
+```{r altmetrics-analysis, child = 'altmetrics-analysis.Rmd'}
+## Results ##
+```
