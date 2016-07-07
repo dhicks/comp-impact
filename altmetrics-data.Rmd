@@ -135,11 +135,5 @@ dist %>% kable(
 
 ```{r export, eval=FALSE}
 write(toJSON(dataf$doi), paste(folder, 'combined dois.json', sep = ''))
-## Clear environment
-stop()
-rm(list = ls())
-pkgs = names(sessionInfo()$otherPkgs)
-pkgs = paste('package:', pkgs, sep = "")
-lapply(pkgs, detach, character.only = TRUE, unload = TRUE)
 ```
 
