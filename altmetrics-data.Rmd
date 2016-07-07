@@ -1,3 +1,16 @@
+---
+output: 
+    pdf_document:
+        fig_caption: yes
+---
+```{r eval = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+fig.height = 2.5
+fig.width = 1.5 * fig.height
+font_size = 10
+
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+```
+
 ## Data ##
 
 Bibliometrics, like other opportunistic uses of independently-cultivated data, depends on stable identifiers that can track individual research targets — such as research publications — across datasets from multiple sources.  DOI, or the digital object identifier, has emerged as a major standard identifier for research publications.  Other identifiers, such as PubMed's internal identifier, are common, but not as widely-used as DOI *[ref]*.  Altmetrics' API accepts queries in terms of both DOIs and PubMed IDs.  
