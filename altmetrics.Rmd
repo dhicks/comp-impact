@@ -3,8 +3,9 @@ output:
     pdf_document:
         fig_caption: true
 ---
-```{r eval = FALSE}
-fig.height = 3
+```{r eval = TRUE}
+fig.height = 2.5
+fig.width = 1.5 * fig.height
 font_size = 10
 ```
 
