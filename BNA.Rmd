@@ -1,0 +1,393 @@
+---
+output:
+  pdf_document:
+    fig_caption: yes
+    keep_tex: true
+  html_document: default
+geometry: margin=1.5in
+tables: yes
+---
+```{r eval = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+fig.height = 2.5
+fig.width = 1.5 * fig.height
+font_size = 8
+
+knitr::opts_chunk$set(dev = 'tikz',
+			   fig.height = fig.height, fig.width = fig.width,
+			   fig.align='center', fig.pos = 't',
+			   sanitize = TRUE,
+			   echo = TRUE,
+			   warning = TRUE, message = TRUE
+			   )
+options(digits = 2, xtable.comment = FALSE)
+```
+
+# Study 2: Bloomberg BNA #
+
+Media analysis provides one approach to assessing the impact of a public-interest scientific research program.  Traditional methods of media analysis require manual review of articles and other documents.  While these methods can provide a rich and nuanced understanding of the way scientific research is presented, and changes in this presentation over time, they may be too resource-intensive in some cases.  In such cases, text-mining tools — computational tools for quantitative analysis of large bodies of text — may be used to produce quick — but potentially "thin" or un-nuanced — analyses and suggest refined targets for analysis using classical techniques  
+
+This section applies text mining tools to analyze a large dataset of trade media coverage of regulatory toxicology.  *[The report addresses two questions:]*
+
+1. How has coverage of the ToxCast program, CSS, and high-throughput toxicology [HTT] more generally, changed over time?  
+2. When HTT is covered, how is it represented? 
+
+## Data ##
+
+*[XML parsing scripts]*
+
+```{r setup}
+library(cowplot)
+	theme_set(theme_cowplot(font_size = font_size))
+library(dplyr)
+library(knitr)
+library(lme4)
+library(lubridate)
+library(reshape2)
+library(syuzhet)
+library(tm)
+library(xtable)
+```
+```{r load_data}
+## Load Bloomberg BNA data
+dataf = read.csv('BNA data/CSV/BNA.text.csv', stringsAsFactors = FALSE)
+dataf = dataf %>% transmute(date = {dmy_hms(pubDate) %>% 
+										floor_date(unit = 'day')}, 
+						title = title,
+						byline = byline,
+						body = text) %>%
+	filter(date > ymd('2000-01-01'),
+		   !grepl(paste('FEDERAL REGISTER',
+		   			 'Comment Deadlines', 
+		   			 'Compiled Information', 
+		   			 "TODAY'S EVENTS",
+		   			 'MEETINGS AND COURSES',
+		   			 'CORRECTION', 
+		   			 sep = '|'),
+		   	   title))
+```
+
+*[clean bylines]*
+
+With assistantance from Bloomberg BNA staff, BNA's web API was used to retrieve all articles with the keyword "toxicology" published since 2000.  Article metadata were retrieved in XML files; custom R scripts were used to parse and combine these XML files, then retrieve text and byline for each article.  Manual inspection of the resulting article set found several hundred items that were short summaries of *Federal Register* notices, announcements of public comment periods, lists of events, and other article types that were judged to be irrelevant; all of these article types were removed.    
+
+Because BNA's own database was queried directly using the API, the dataset can be considered complete and error-free.  One remaining potential source of data error is the inclusion of repeated or duplicate articles.  Manual review of titles and a programmatic check for duplicate titles indicated no duplicate articles.  
+```{r dupes_check, eval = FALSE}
+## Check titles
+dataf$title[duplicated(dataf$title)]
+## Check article text
+dataf$body[duplicated(dataf$body)]
+```
+
+## Methods ##
+
+### "ToxCast" Scores ###
+
+```{r text_mining_setup}
+## Text-mining prep
+## Build the corpus
+corpus = VCorpus(DataframeSource(dataf), 
+				 readerControl = list(reader = readTabular(mapping = 
+				 								list(date = 'date', 
+				 									 title = 'title',
+				 									 content = 'body')), 
+				 					 language = 'en'))
+
+## tm's removePunctuation doesn't replace punctuation with whitespace
+remove_punct = function (x) {return(gsub('[^-[:^punct:]]', ' ', x, perl = TRUE))}
+## Assume it's safe to drop non-ASCII characters
+only_ascii = function (x) {return(gsub('[^[:ascii:]]', '', x, perl = TRUE))}
+corpus = corpus %>% 
+	tm_map(content_transformer(tolower), mc.cores = 1) %>% 
+	tm_map(removeWords, stopwords("english")) %>% 
+	tm_map(content_transformer(remove_punct)) %>% 
+	tm_map(content_transformer(only_ascii)) %>%
+	#tm_map(removePunctuation, preserve_intra_word_dashes = TRUE)  %>%
+	tm_map(removeNumbers) %>% 
+	## Stemming didn't seem to work well
+	#tm_map(stemDocument) %>% 
+	tm_map(stripWhitespace)
+
+## Document-term matrix and frequencies
+termdoc = TermDocumentMatrix(corpus)
+```
+
+To address research question 1, the vocabulary used in the articles was first normalized.  Individual terms were converted to lowercase; punctuation was removed (except for interword hyphens, as in "high-throughput"), along with numbers, special symbols, and stopwords (words so common that they can confound text mining, such as "the"). 
+
+```{r build_term_sets}
+## Extract the toxcast row
+toxcast = as.matrix(termdoc)['toxcast',]
+
+## Calculate distances from toxcast for each term
+## L1 norm
+#distances = apply(as.matrix(termdoc), 1, function (x) sum(abs(x - toxcast)))
+## Jaccard distance
+distances = apply(as.matrix(termdoc), 1,
+				  function (x) 1 - sum((x * toxcast) > 0) / 
+				  					sum((x + toxcast) > 0))
+
+## Plot the distribution of distances
+ggplot(data = data.frame(dist = sort(distances), x = 1:length(distances)), 
+	   aes(x, dist)) + geom_line() + 
+	geom_vline(xintercept = c(10, 100, 1000), color = 'blue') +
+	ylab('Jaccard distance from ``ToxCast"') +
+	xlab('terms') +
+	scale_x_log10(breaks = 10^(0:4))
+
+## Get the 10, 100, and 1000 terms closest to toxcast in the corpus
+toxcast10 = names(sort(distances)[1:10])
+toxcast100 = names(sort(distances)[1:100])
+toxcast1k = names(sort(distances)[1:1000])
+rm(toxcast, distances)
+```
+
+*[do we need score_article and score_length?]*
+
+```{r calculate_scores}
+## Calculate scores for each document
+scores = lapply(
+	list(toxcast = 'toxcast', 
+		 toxcast10 = toxcast10,
+		 toxcast100 = toxcast100, 
+		 toxcast1k = toxcast1k), 
+	function(x) tm_term_score(termdoc, x)) %>% 
+	as.data.frame
+dataf = dataf %>% mutate(length = {as.matrix(termdoc) %>% colSums()}) %>%
+	cbind(scores)
+rm(scores)
+
+## Calculate monthly total scores, no. articles, and total length
+thresh_date = '2005-01-01'
+
+dataf$month = dataf$date %>% floor_date(unit = 'month')
+scores_month = dataf %>% group_by(month) %>%
+	select(toxcast:toxcast1k) %>% summarize_each('sum') %>%
+	right_join({dataf %>% group_by(month) %>% 
+			summarize(n_articles = n(), tot_length = sum(length))})
+scores_month = scores_month %>% 
+	melt(id.vars = c('month', 'n_articles', 'tot_length'), 
+		 measure.vars = c('toxcast', 'toxcast10', 'toxcast100', 'toxcast1k'),
+		 variable.name = 'terms', value.name = 'score') %>%
+	mutate(score_article = score / n_articles, 
+		   score_length = score / tot_length, 
+		   ## For precision reasons, rescale `month` to number of years 
+		   ## (365 days) relative to the threshold date
+		   month.rs = difftime(month, thresh_date, unit = 'days')/365, 
+		   ## lmer doesn't like that tot_length varies over a few orders 
+		   ##   of magnitude
+		   tot_length.rs = as.vector(scale(tot_length)))
+```
+
+To analyze the impact of CSS on this corpus, the analysis focused on the (normalized) term "toxcast" and associated terms, meaning terms that tend to appear in the same documents as "toxcast".  Sets of the 100, 500, and 1000 terms most strongly associated with "toxcast".  "Scores," occurrence frequencies across each of the four sets of terms, were calculated for each document, as both raw totals and normalized by document length.  Finally, scores were aggregated by month and linear trends over time were examined.  
+
+
+### Sentiment Analysis ###
+
+Sentiment analysis uses manually-prepared reference lists of emotionally-laden terms to estimate the emotional valence of texts.  A text that frequently uses terms that human curators have judged to be "positive" or "fearful," say, will be assigned a high "positive" or "fearful" score.  While this technique is obviously useful for addressing research question 2, concerning the way HTT research is represented in the trade media, its results should not be over-interpreted.  Specifically, the results depend heavily on the content of the reference lists; do not take into account sentence structure; and are easily confounded by irony and other complex rhetorical constructions.  
+
+Here a sentiment analysis tool was applied to every article in the corpus with a non-zero toxcast100 score.  The sentiment analysis tool estimates scores for ten emotional valences: "anger," "anticipation," "disgust," "fear," "joy," "sadness," "surprise," "trust," "negative," and "positive." Both raw (total frequency) and normalized (by article length) sentiment scores were calculated.  
+
+```{r sentiment-analysis-prep}
+toxcast_stories = dataf %>% filter(toxcast100 > 0)
+toxcast_stories = cbind(toxcast_stories, get_nrc_sentiment(toxcast_stories$body))
+toxcast_stories$length = sapply(toxcast_stories$body, 
+							   function(x) length(get_tokens(x)), USE.NAMES = TRUE)
+
+#toxcast_stories %>% select(anger:positive) %>% summary()
+#ggplot(toxcast_stories, aes(date, anticipation)) + geom_point() + geom_smooth(method = 'lm')
+
+toxcast_stories_m = toxcast_stories %>% select(date, month, length, anger:positive) %>% 
+	melt(id.vars = c('date', 'month', 'length')) %>%
+	mutate(value.norm = value / length * 1000)
+```
+
+
+
+
+
+
+## Results ##
+
+Publication date, title, byline, and full text were obtained for `r nrow(dataf)` articles. After normalization, the vocabulary included `r termdoc$ncol` distinct terms and a total of $`r sum(as.matrix(termdoc))`$ tokens (word-instances).  See figure \ref{fig.monthly}. The large spike in total length in February 2000 is due to five long, high-level EPA policy documents apparently republished by BNA.  
+
+```{r articles_time, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'Overview of the BNA dataset. \\textbf{A}: Number of articles published each month. \\textbf{B} and \\textbf{C}: Total length of articles per month (total token acount after normalization).  \\textbf{C} omits months with more than 5,000 total tokens. \\label{fig.monthly}'}
+month_n_art_plot = ggplot(data = dataf, aes(x = month)) + 
+	geom_line(stat = 'count') + 
+	xlab('month') + ylab('no. articles')
+month_tot_len_plot = ggplot(data = dataf, aes(x = month, y = length)) +
+	geom_line(stat = 'sum', size = .25) + 
+	ylab('total length')
+length_plot = plot_grid(month_tot_len_plot, month_tot_len_plot + ylim(0, 5000), 
+		  nrow = 1, labels = c('B', 'C'))
+plot_grid(month_n_art_plot, length_plot, nrow = 2, labels = c('A', ''))
+```
+
+### "ToxCast" Scores ###
+
+Table \ref{tab.toxcast100} shows the 100 terms most closely associated with "toxcast" in the dataset.  Figure \ref{fig.monthly_scores} shows monthly total ToxCast scores for the term "toxcast" by itself and the 10, 100, and 1000 terms most closely associated with "toxcast," *excluding February 2000*. 
+
+```{r toxcast100}
+matrix(sort(toxcast100), nrow = 5) %>% t %>%
+	kable(col.names = rep('', 5), 
+		  caption = 'ToxCast 100 terms, normalized \\label{tab.toxcast100}', 
+		  format = 'latex')
+```
+```{r plot_monthly_scores, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'ToxCast scores. Scores are calculated as monthly total occurrences of "toxcast" and its 10, 100, or 1000 most closely-associated terms. Blue lines indicate linear regressions before and after January 2005. Articles from February 2000 are excluded from this plot. \\label{fig.monthly_scores}'}
+## Plot the results
+ggplot(data = {scores_month %>% filter(month != ymd('2000-02-01'))}, 
+	   aes(month, score)) + 
+	geom_line() + 
+	facet_wrap(~ terms, scale = 'free_y') +
+	stat_smooth(data = function(x) filter(x, month < thresh_date), method = 'lm',
+				se = TRUE) + 
+	stat_smooth(data = function(x) filter(x, month >= thresh_date), method = 'lm',
+				se = TRUE)
+```
+```{r monthly_scores_control, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'ToxCast scores after adjusting for monthly article and word totals.  Articles from February 2000 are excluded from this plot. \\label{fig.monthly_scores_control}'}
+## Use a regression of scores on the number of articles and tot. article length
+##   (rescaled) to analyze causes of changes over time
+re_fit = lmer(data = {scores_month %>% filter(month != ymd('2000-02-01'))}, 
+			score ~ 1 + (tot_length.rs + n_articles | terms))
+scores_month = scores_month %>% mutate(re_predict = predict(re_fit, scores_month), 
+						re_resid = score - re_predict)
+ggplot(data = {scores_month %>% filter(month != ymd('2000-02-01'))}, 
+	   aes(month, re_resid)) + 
+	geom_line() + 
+	facet_wrap(~ terms, scale = 'free_y') +
+	stat_smooth(data = function(x) filter(x, month < thresh_date), method = 'lm',
+				se = TRUE) + 
+	stat_smooth(data = function(x) filter(x, month >= thresh_date), method = 'lm',
+				se = TRUE) +
+	ylab('adjusted score')
+```
+
+The first instance of "toxcast" was on `r scores_month %>% filter(terms == 'toxcast', score > 0) %>% .[['month']] %>% min`.  The plot suggests that, after January 2005, the term "toxcast" occurred more frequently but roughly constantly. The toxcast10 set shows a steady increase over the entire period 2000-2016; notably, toxcast100 and toxcast1000 show decreasing trends prior to January 2005, then increasing trends after this point.  Table \ref{tab.trends} confirms this visual impression, finding statistically significant differences in trends before and after January 2005 for the toxcast100 and toxcast1000 sets of terms.  
+
+```{r monthly_scores_coeff}
+## Regression slopes before and after the threshold date
+trends = function (termset) {
+	fit_before = lm(data = filter(scores_month, terms == termset, 
+								  month < thresh_date, 
+								  month != ymd('2000-02-01')),
+			 score ~ month.rs)
+	fit_after = lm(data = filter(scores_month, terms == termset, 
+								 month >= thresh_date),
+				   score ~ month.rs)
+	return_df = data.frame(trend_before = fit_before$coefficients['month.rs'], 
+						   trend_after = fit_after$coefficients['month.rs'],
+						   trend_before_se = summary(fit_before)$coefficients['month.rs', 'Std. Error'],
+						   trend_after_se = summary(fit_after)$coefficients['month.rs', 'Std. Error']) %>%
+			mutate(z = (trend_after - trend_before)/sqrt(trend_after_se^2 + trend_before_se^2), 
+				   p = 1 - pnorm(abs(z)))
+	rownames(return_df) = termset
+	return(return_df)
+}
+
+sapply(as.character(unique(scores_month$terms)), trends) %>% 
+	as.data.frame() %>%
+	mutate(rownames = c('Trend (Before)', 'Trend (After)', 'Trend (Before, SE)', 
+		  			  'Trend (After, SE)', 'Z', 'p')) %>%
+	select(rownames, toxcast:toxcast1k) %>%
+	kable(row.names = FALSE, 
+		  col.names = c('', 'toxcast', 'toxcast10', 'toxcast100', 'toxcast1000'),
+		  caption = 'Comparison of linear trends before and after January 2005. Trend values are annual changes in the number of articles per month.  Z:  Z-scores for the difference in trends. p: p-values of Z-scores against null hypothesis of no differences in trends. Articles from February 2000 are excluded from this analysis  \\label{tab.trends}',
+		  format = 'latex'
+		  #digits = 3
+		  )
+```
+
+Since scores are based on word frequencies, they are likely to be affected by the number of articles per month and the total length of those articles.  Figure \ref{fig.monthly_scores_control} plots scores after adjusting for these two factors.  After adjustment, "toxcast" shows a striking downward trend before 2005; the length of the articles were gradually changing over this period, and so the model expects to see an increase, but "toxcast" does not occur at all, so the trend line runs down.  The other three sets of terms exhibit roughly the same pattern, with flat trends before 2005 and modestly increasing trends afterwards.  This suggests, first, that the decreasing pre-2005 trends in figure \ref{fig.monthly_scores} are due to changes in the number of articles and total length; and second, that the increasing post-2005 trends are not only due to changes in the number of articles and total length.  
+
+Aside of the general trends, the plots show a number of "peaks," months with especially high total scores.  Table \ref{tab.peaks} lists the articles with toxcast100 scores greater than 0 for those months with total toxcast100 scores at least 120 (excluding February 2000).  There are five such peaks, in October 2014, October 2015, November 2015, January 2016, and March 2016.  The October 2015 peak is essentially the result of a single article with an extremely high toxcast100 score; the other four peaks are due to combinations of multiple articles with modest to high scores.  
+
+\clearpage
+```{r peaks, results='asis'}
+## Identify months with totals > 120
+interesting_months = scores_month %>% filter(terms == 'toxcast100', 
+											 score >= 120) %>%
+	.[['month']]
+## Extract the articles from those months
+dataf %>% 
+	filter(month %in% interesting_months, toxcast100 > 0, 
+		   month != ymd('2000-02-01')) %>%
+	select(month, date, title, score = toxcast100) %>%
+	mutate(month = as.character(month), 
+		   date = as.character(date)) %>%
+	arrange(date) %>%
+	split(as.character(.$month)) %>%
+	lapply(function (x) {select(x, -month)}) %>%
+	xtableList(align = 'clp{4in}r', 
+		  caption = 'Articles with non-zero toxcast100 scores, from months with total toxcast100 scores at least 120.  February 2000 is not included in this table.  \\label{tab.peaks}', digits = 0) %>%
+	print(include.rownames=FALSE, comment=FALSE, 
+		  tabular.environment='longtable', 
+		  floating = FALSE)
+```
+\clearpage
+
+The titles of the articles from these peaks indicate, first, that the toxcast100 score is a precise detector of CSS-relevant stories in BNA, with a low false positive rate (i.e., few articles with a high toxcast100 score but that are not relevant to CSS).  Second, the stories in these peaks are generally not about internal scientific developments, but instead about near- and medium-term regulatory uses of CSS tools.  However, third, stories that focus on specific hazards seem to have lower scores than stories that give broad overviews of high-throughput toxicology, at least within these peaks.  *[no coverage of EDSP Pivot?]*
+
+
+### Sentiment Analysis ###
+
+*[this analysis focuses on the stories with toxcast100 scores > 0]*
+
+
+```{r sentiment-histograms, fig.cap = 'Distributions of sentiment analysis scores.  Scores are on x-axis (note log scale), with densities on the y-axis. Vertical line indicates scores = 10. February 2000 is excluded from this plot. \\label{fig.sent_scores}'}
+ggplot(filter(toxcast_stories_m, month != ymd('2000-02-01')), aes(value)) + 
+	#geom_histogram(binwidth = 1) + 
+	geom_density() +
+	geom_vline(xintercept = 10) +
+	#stat_ecdf() +
+	facet_wrap(~ variable) + ylab('') + 
+	scale_x_log10(name = '')
+keep_sents = c('anticipation', 'fear', 'trust', 'negative', 'positive')
+```
+
+Figure \ref{fig.sent_scores} shows the distribution of sentiment analysis scores for each emotional valence. Except for a substantial number of 0 scores, the distribution of scores for each valence is roughly log-Gaussian.  Anger, disgust, joy, sadness, and surprise have consistently low scores, so the analysis focuses on anticipation, fear, trust, negative, and positive.  
+
+```{r sentiment-time, fig.cap = 'Distribution of sentiment analysis scores over time.  Black lines indicate loess regressions. February 2000 is excluded from this plot.  \\label{fig.sent_scores_time}'}
+ggplot({toxcast_stories_m %>% 
+		filter(variable %in% keep_sents, 
+			   month != ymd('2000-02-01'))},
+	   aes(date, value, color = variable)) + 
+	geom_point() + 
+	geom_smooth(color = 'black', fill = 'grey') + 
+	scale_color_discrete(guide = FALSE) +
+	facet_wrap(~ variable) + scale_y_log10()
+```
+
+```{r sentiment-diff, fig.width = 1.5*fig.width, fig.cap = 'Distribution of differences between positive and negative emotional valence scores. \\textbf{A}: Density of differences. \\textbf{B}: Differences over time; red line is a loess regression.  February 2000 is excluded from these plots. \\label{fig.sen_dff}'}
+toxcast_stories = toxcast_stories %>% mutate(diff = positive - negative)
+sen_diff_density = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')), 
+						  aes(diff)) + 
+						  	geom_density() + geom_rug() +
+	xlab('positive - negative')
+sen_diff_time = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')), 
+					   	aes(date, diff)) + geom_point(alpha = .25) +
+	geom_smooth(color = 'red') + ylab('positive - negative')
+plot_grid(sen_diff_density, sen_diff_time, labels = 'AUTO')
+```
+
+Figure \ref{fig.sent_scores_time} shows the distribution of sentiment scores over time, along with local regressions.  All five emotional valences are basically stable over time.  Notably, positive scores appear to be higher on average than negative scores. Figure \ref{fig.sen_dff} shows the distribution of the difference between positive and negative scores.  `r 1 - ecdf(toxcast_stories$diff)(0) * 100`% of articles have a greater positive than negative score, and this positive difference is stable over time. 
+
+
+```{r, fig.width = 1.5*fig.width, fig.cap = 'Correlations between toxcast100 scores and (\\textbf{A}) positive and (\\textbf{B}) negative emotional valences. Blue lines are linear regressions. Note log scales on all axes. \\label{fig.toxcast_sent}'}
+## No correlation between toxcast100 score and positive or negative
+toxcast100_pos_plot = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')),
+	   aes(toxcast100, positive)) + geom_point() + geom_smooth(method = 'lm') +
+	scale_x_log10() + scale_y_log10()
+toxcast100_pos_fit = lm(data = filter(toxcast_stories, month != ymd('2000-02-01')),
+		log10(positive) ~ log10(toxcast100))
+toxcast100_neg_plot = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')),
+	   aes(toxcast100, negative)) + geom_point() + geom_smooth(method = 'lm') +
+	scale_x_log10() + scale_y_log10()
+toxcast100_neg_fit = lm(data = filter(toxcast_stories, month != ymd('2000-02-01'),
+									  negative > 0),
+		log10(negative) ~ log10(toxcast100))
+plot_grid(toxcast100_pos_plot, toxcast100_neg_plot, nrow = 1, align = 'h', 
+		  labels = 'AUTO')
+```
+
+Finally, figure \ref{fig.toxcast_sent} examines the relationship between toxcast100 score and positive and negative scores.  There is a highly statistically significant positive relationship between both pairs ($p = `r summary(toxcast100_pos_fit)$coefficients[2, 4]`, `r summary(toxcast100_neg_fit)$coefficients[2, 4]`$ for positive and negative scores, respectively), but the effects are modest ($b = `r summary(toxcast100_pos_fit)$coefficients[2,1]`, `r summary(toxcast100_neg_fit)$coefficients[2,1]`$) and, as suggested by the plot, this relationship has low explanatory power ($R^2 = `r summary(toxcast100_pos_fit)$r.squared`, `r summary(toxcast100_neg_fit)$r.squared)`).  
+
+*[todo: this really needs to be controlled by article length]*
+
