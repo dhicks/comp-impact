@@ -145,8 +145,6 @@ toxcast1k = names(sort(distances)[1:1000])
 rm(toxcast, distances)
 ```
 
-*[do we need score_article and score_length?]*
-
 ```{r calculate_scores}
 ## Calculate scores for each document
 scores = lapply(
@@ -172,9 +170,7 @@ scores_month = scores_month %>%
 	melt(id.vars = c('month', 'n_articles', 'tot_length'), 
 		 measure.vars = c('toxcast', 'toxcast10', 'toxcast100', 'toxcast1k'),
 		 variable.name = 'terms', value.name = 'score') %>%
-	mutate(score_article = score / n_articles, 
-		   score_length = score / tot_length, 
-		   ## For precision reasons, rescale `month` to number of years 
+	mutate(## For precision reasons, rescale `month` to number of years 
 		   ## (365 days) relative to the threshold date
 		   month.rs = difftime(month, thresh_date, unit = 'days')/365, 
 		   ## lmer doesn't like that tot_length varies over a few orders 
@@ -187,32 +183,32 @@ To analyze the impact of CSS on this corpus, the analysis focused on the (normal
 
 ### Sentiment Analysis ###
 
-Sentiment analysis uses manually-prepared reference lists of emotionally-laden terms to estimate the emotional valence of texts.  A text that frequently uses terms that human curators have judged to be "positive" or "fearful," say, will be assigned a high "positive" or "fearful" score.  While this technique is obviously useful for addressing research question 2, concerning the way HTT research is represented in the trade media, its results should not be over-interpreted.  Specifically, the results depend heavily on the content of the reference lists; do not take into account sentence structure; and are easily confounded by irony and other complex rhetorical constructions.  
+Sentiment analysis uses manually-prepared reference lists of emotionally-laden terms to estimate the emotional valence of texts.  A text that frequently uses terms that human curators have judged to be "positive" or "fearful," say, will be assigned a high "positive" or "fearful" score.  While this technique is obviously useful for addressing research question 2, concerning the way HTT research is represented in the trade media, its results should not be over-interpreted.  Specifically, the results depend heavily on the content of the reference lists; do not take into account sentence structure; and are easily confounded by irony and other complex rhetorical constructions. *[cite]* 
 
-Here a sentiment analysis tool was applied to every article in the corpus with a non-zero toxcast100 score.  The sentiment analysis tool estimates scores for ten emotional valences: "anger," "anticipation," "disgust," "fear," "joy," "sadness," "surprise," "trust," "negative," and "positive." Both raw (total frequency) and normalized (by article length) sentiment scores were calculated.  
+Here a sentiment analysis tool was applied to every article in the corpus with a non-zero toxcast100 score.  The sentiment analysis tool estimates scores for ten emotional valences: "anger," "anticipation," "disgust," "fear," "joy," "sadness," "surprise," "trust," "negative," and "positive." Both raw (total frequency) and normalized (per 1,000 words in the article) sentiment scores were calculated.  
 
 ```{r sentiment-analysis-prep}
-toxcast_stories = dataf %>% filter(toxcast100 > 0)
+toxcast_stories = dataf %>% filter(toxcast100 > 0) %>% mutate(id = row_number())
 toxcast_stories = cbind(toxcast_stories, get_nrc_sentiment(toxcast_stories$body))
 toxcast_stories$length = sapply(toxcast_stories$body, 
 							   function(x) length(get_tokens(x)), USE.NAMES = TRUE)
 
-#toxcast_stories %>% select(anger:positive) %>% summary()
-#ggplot(toxcast_stories, aes(date, anticipation)) + geom_point() + geom_smooth(method = 'lm')
-
-toxcast_stories_m = toxcast_stories %>% select(date, month, length, anger:positive) %>% 
-	melt(id.vars = c('date', 'month', 'length')) %>%
+## Melt into a long dataframe for use with ggplot
+toxcast_stories_m = toxcast_stories %>% 
+	select(id, date, month, length, anger:positive) %>% 
+	melt(id.vars = c('id', 'date', 'month', 'length')) %>%
+	## It's easiest to calculate length-normalized scores here
 	mutate(value.norm = value / length * 1000)
+## Cast the length-normalized valence scores into the same shape as toxcast_stories
+toxcast_stories = toxcast_stories_m %>% 
+	dcast(id ~ variable, value.var = 'value.norm') %>% 
+	right_join(toxcast_stories, by = 'id')
 ```
-
-
-
-
 
 
 ## Results ##
 
-Publication date, title, byline, and full text were obtained for `r nrow(dataf)` articles. After normalization, the vocabulary included `r termdoc$ncol` distinct terms and a total of $`r sum(as.matrix(termdoc))`$ tokens (word-instances).  See figure \ref{fig.monthly}. The large spike in total length in February 2000 is due to five long, high-level EPA policy documents apparently republished by BNA.  
+Publication date, title, byline, and full text were obtained for `r nrow(dataf)` articles. After normalization, the vocabulary included `r termdoc$nrow` distinct terms and a total of $`r sum(as.matrix(termdoc))`$ tokens (word-instances).  See figure \ref{fig.monthly}. The large spike in total length in February 2000 is due to five long, high-level EPA policy documents apparently republished by BNA.  
 
 ```{r articles_time, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'Overview of the BNA dataset. \\textbf{A}: Number of articles published each month. \\textbf{B} and \\textbf{C}: Total length of articles per month (total token acount after normalization).  \\textbf{C} omits months with more than 5,000 total tokens. \\label{fig.monthly}'}
 month_n_art_plot = ggplot(data = dataf, aes(x = month)) + 
@@ -328,32 +324,31 @@ dataf %>%
 ```
 \clearpage
 
-The titles of the articles from these peaks indicate, first, that the toxcast100 score is a precise detector of CSS-relevant stories in BNA, with a low false positive rate (i.e., few articles with a high toxcast100 score but that are not relevant to CSS).  Second, the stories in these peaks are generally not about internal scientific developments, but instead about near- and medium-term regulatory uses of CSS tools.  However, third, stories that focus on specific hazards seem to have lower scores than stories that give broad overviews of high-throughput toxicology, at least within these peaks.  *[no coverage of EDSP Pivot?]*
+The titles of the articles from these peaks indicate, first, that the toxcast100 score is a precise detector of CSS-relevant stories in BNA, with a low false positive rate (i.e., few articles with a high toxcast100 score but that are not relevant to CSS).  Second, the stories in these peaks are generally not about internal scientific developments, but instead about near- and medium-term regulatory uses of CSS tools.  However, third, stories that focus on specific hazards seem to have lower scores than stories that give broad overviews of high-throughput toxicology, at least within these peaks.  (Notably, the EDSP Pivot in June 2016 does not appear on this list; as far as I have been able to tell, BNA's only coverage of the EDSP Pivot was a brief note in one of the Federal Register overview articles.)  
 
 
 ### Sentiment Analysis ###
 
-*[this analysis focuses on the stories with toxcast100 scores > 0]*
-
-
-```{r sentiment-histograms, fig.cap = 'Distributions of sentiment analysis scores.  Scores are on x-axis (note log scale), with densities on the y-axis. Vertical line indicates scores = 10. February 2000 is excluded from this plot. \\label{fig.sent_scores}'}
-ggplot(filter(toxcast_stories_m, month != ymd('2000-02-01')), aes(value)) + 
+```{r sentiment-histograms, fig.cap = 'Kernel density estimates of length-normalized sentiment analysis scores.  Scores are on x-axis (note log scale), with densities on the y-axis. Vertical line indicates scores = 10 (1% of all article words). February 2000 is excluded from this plot. \\label{fig.sent_scores}'}
+ggplot(filter(toxcast_stories_m, month != ymd('2000-02-01')), 
+	   aes(value.norm, fill = variable)) + 
 	#geom_histogram(binwidth = 1) + 
 	geom_density() +
 	geom_vline(xintercept = 10) +
 	#stat_ecdf() +
 	facet_wrap(~ variable) + ylab('') + 
-	scale_x_log10(name = '')
+	scale_x_log10(name = '') + 
+	scale_fill_discrete(guide = FALSE)
 keep_sents = c('anticipation', 'fear', 'trust', 'negative', 'positive')
 ```
 
-Figure \ref{fig.sent_scores} shows the distribution of sentiment analysis scores for each emotional valence. Except for a substantial number of 0 scores, the distribution of scores for each valence is roughly log-Gaussian.  Anger, disgust, joy, sadness, and surprise have consistently low scores, so the analysis focuses on anticipation, fear, trust, negative, and positive.  
+`r nrow(toxcast_stories)` stories had non-zero toxcast100 scores.  Figure \ref{fig.sent_scores} shows the distribution of sentiment analysis scores for each emotional valence across this set of stories, normalized by article length. Except for a substantial number of 0 scores, the distribution of scores for each valence is roughly log-Gaussian.  Anger, disgust, joy, sadness, and surprise have consistently low scores, so the analysis focuses on anticipation, fear, trust, negative, and positive.  
 
 ```{r sentiment-time, fig.cap = 'Distribution of sentiment analysis scores over time.  Black lines indicate loess regressions. February 2000 is excluded from this plot.  \\label{fig.sent_scores_time}'}
 ggplot({toxcast_stories_m %>% 
 		filter(variable %in% keep_sents, 
 			   month != ymd('2000-02-01'))},
-	   aes(date, value, color = variable)) + 
+	   aes(date, value.norm, color = variable)) + 
 	geom_point() + 
 	geom_smooth(color = 'black', fill = 'grey') + 
 	scale_color_discrete(guide = FALSE) +
@@ -361,7 +356,7 @@ ggplot({toxcast_stories_m %>%
 ```
 
 ```{r sentiment-diff, fig.width = 1.5*fig.width, fig.cap = 'Distribution of differences between positive and negative emotional valence scores. \\textbf{A}: Density of differences. \\textbf{B}: Differences over time; red line is a loess regression.  February 2000 is excluded from these plots. \\label{fig.sen_dff}'}
-toxcast_stories = toxcast_stories %>% mutate(diff = positive - negative)
+toxcast_stories = toxcast_stories %>% mutate(diff = positive.x - negative.x)
 sen_diff_density = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')), 
 						  aes(diff)) + 
 						  	geom_density() + geom_rug() +
@@ -372,27 +367,58 @@ sen_diff_time = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')),
 plot_grid(sen_diff_density, sen_diff_time, labels = 'AUTO')
 ```
 
-Figure \ref{fig.sent_scores_time} shows the distribution of sentiment scores over time, along with local regressions.  All five emotional valences are basically stable over time.  Notably, positive scores appear to be higher on average than negative scores. Figure \ref{fig.sen_dff} shows the distribution of the difference between positive and negative scores.  `r 1 - ecdf(toxcast_stories$diff)(0) * 100`% of articles have a greater positive than negative score, and this positive difference is stable over time. 
-
+Figure \ref{fig.sent_scores_time} shows the distribution of sentiment scores over time, along with local regressions.  All five emotional valences are basically stable over time.  Notably, positive scores appear to be higher on average than negative scores. Figure \ref{fig.sen_dff} shows the distribution of the difference between positive and negative scores.  `r (1 - ecdf(toxcast_stories$diff)(0)) * 100`% of articles have a greater positive than negative score, and this positive difference is stable over time. 
 
 ```{r, fig.width = 1.5*fig.width, fig.cap = 'Correlations between toxcast100 scores and (\\textbf{A}) positive and (\\textbf{B}) negative emotional valences. Blue lines are linear regressions. Note log scales on all axes. \\label{fig.toxcast_sent}'}
 ## No correlation between toxcast100 score and positive or negative
 toxcast100_pos_plot = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')),
-	   aes(toxcast100, positive)) + geom_point() + geom_smooth(method = 'lm') +
-	scale_x_log10() + scale_y_log10()
+	   aes(toxcast100, positive.x)) + geom_point() + geom_smooth(method = 'lm') +
+	scale_x_log10() + scale_y_log10(name = 'positive')
 toxcast100_pos_fit = lm(data = filter(toxcast_stories, month != ymd('2000-02-01')),
-		log10(positive) ~ log10(toxcast100))
+		log10(positive.x) ~ log10(toxcast100))
 toxcast100_neg_plot = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')),
-	   aes(toxcast100, negative)) + geom_point() + geom_smooth(method = 'lm') +
-	scale_x_log10() + scale_y_log10()
+	   aes(toxcast100, negative.x)) + geom_point() + geom_smooth(method = 'lm') +
+	scale_x_log10() + scale_y_log10(name = 'negative')
 toxcast100_neg_fit = lm(data = filter(toxcast_stories, month != ymd('2000-02-01'),
-									  negative > 0),
-		log10(negative) ~ log10(toxcast100))
+									  negative.x > 0),
+		log10(negative.x) ~ log10(toxcast100))
 plot_grid(toxcast100_pos_plot, toxcast100_neg_plot, nrow = 1, align = 'h', 
 		  labels = 'AUTO')
 ```
 
-Finally, figure \ref{fig.toxcast_sent} examines the relationship between toxcast100 score and positive and negative scores.  There is a highly statistically significant positive relationship between both pairs ($p = `r summary(toxcast100_pos_fit)$coefficients[2, 4]`, `r summary(toxcast100_neg_fit)$coefficients[2, 4]`$ for positive and negative scores, respectively), but the effects are modest ($b = `r summary(toxcast100_pos_fit)$coefficients[2,1]`, `r summary(toxcast100_neg_fit)$coefficients[2,1]`$) and, as suggested by the plot, this relationship has low explanatory power ($R^2 = `r summary(toxcast100_pos_fit)$r.squared`, `r summary(toxcast100_neg_fit)$r.squared)`).  
+Figure \ref{fig.toxcast_sent} shows that there is no relationship between toxcast100 score and length-normalized positive scores.  There is a statistically significant ($p = `r summary(toxcast100_neg_fit)$coefficients[2,4]`$) negative association ($b = `r summary(toxcast100_neg_fit)$coefficients[2,1]`$) between toxcast100 score and negative valence; however, as indicated by the plot, this relationship is small and non-explanatory ($R^2 = `r summary(toxcast100_neg_fit)$r.squared`$). That is, coverage that is more focused on CSS-relevant research does not tend to be more or less positive, but does have a slight tendency to be less negative.  
 
-*[todo: this really needs to be controlled by article length]*
+```{r sentiment-diff-trust, fig.width = 1.5*fig.width, fig.cap = 'Distribution of differences between trust and fear emotional valence scores. \\textbf{A}: Density of differences. \\textbf{B}: Differences over time; red line is a loess regression.  February 2000 is excluded from these plots. \\label{fig.sen_dff_trust}'}
+toxcast_stories = toxcast_stories %>% mutate(diff_trust = trust.x - fear.x)
+sen_diff_density = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')), 
+						  aes(diff_trust)) + 
+	geom_density() + geom_rug() +
+	xlab('trust - fear')
+sen_diff_time = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')), 
+					   aes(date, diff_trust)) + geom_point(alpha = .25) +
+	geom_smooth(color = 'red') + ylab('trust - fear')
+plot_grid(sen_diff_density, sen_diff_time, labels = 'AUTO')
+```
 
+Figure \ref{fig.sent_scores_time} also suggests that "trust" scores are generally greater than "fear" scores.  Figure \\ref{fig.sen_diff_trust} confirms this; trust scores are greater than fear scores for `r (1 - ecdf(toxcast_stories$diff_trust)(0)) * 100`% of articles.  
+
+## Key Analytical Decisions ##
+
+- inclusion/exclusion criteria
+	- terms used for initial BNA search
+	- exclusion of February 2000
+- vocabulary normalization
+	- what stopwords were removed
+	- decision not to stem
+- "toxcast" as starting point for analysis
+- choice of distance function
+- size of "associated terms" sets
+- count-based analysis completely ignores structure and context
+- choice of date threshold
+- linear vs. non-linear trends
+- choice of sentiment analysis tool
+	- all of the assumptions and contingencies of this tool
+- raw vs. article-length-normalized statistics
+- level of aggregation (sentence, paragraph, article, month, quarter, year)
+
+*[section numbers]*
