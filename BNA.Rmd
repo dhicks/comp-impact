@@ -73,8 +73,6 @@ dataf = dataf %>% transmute(date = {dmy_hms(pubDate) %>%
 		   	   title))
 ```
 
-*[clean bylines]*
-
 With assistantance from Bloomberg BNA staff, BNA's web API was used to retrieve all articles with the keyword "toxicology" published since 2000.  Article metadata were retrieved in XML files; custom R scripts were used to parse and combine these XML files, then retrieve text and byline for each article.  Manual inspection of the resulting article set found several hundred items that were short summaries of *Federal Register* notices, announcements of public comment periods, lists of events, and other article types that were judged to be irrelevant; all of these article types were removed.    
 
 Because BNA's own database was queried directly using the API, the dataset can be considered complete and error-free.  One remaining potential source of data error is the inclusion of repeated or duplicate articles.  Manual review of titles and a programmatic check for duplicate titles indicated no duplicate articles.  
@@ -133,12 +131,12 @@ distances = apply(as.matrix(termdoc), 1,
 				  					sum((x + toxcast) > 0))
 
 ## Plot the distribution of distances
-ggplot(data = data.frame(dist = sort(distances), x = 1:length(distances)), 
-	   aes(x, dist)) + geom_line() + 
-	geom_vline(xintercept = c(10, 100, 1000), color = 'blue') +
-	ylab('Jaccard distance from ``ToxCast"') +
-	xlab('terms') +
-	scale_x_log10(breaks = 10^(0:4))
+# ggplot(data = data.frame(dist = sort(distances), x = 1:length(distances)), 
+# 	   aes(x, dist)) + geom_line() + 
+# 	geom_vline(xintercept = c(10, 100, 1000), color = 'blue') +
+# 	ylab('Jaccard distance from ``toxcast"') +
+# 	xlab('terms') +
+# 	scale_x_log10(breaks = 10^(0:4))
 
 ## Get the 10, 100, and 1000 terms closest to toxcast in the corpus
 toxcast10 = names(sort(distances)[1:10])
@@ -224,13 +222,13 @@ month_tot_len_plot = ggplot(data = dataf, aes(x = month, y = length)) +
 	geom_line(stat = 'sum', size = .25) + 
 	ylab('total length')
 length_plot = plot_grid(month_tot_len_plot, month_tot_len_plot + ylim(0, 5000), 
-		  nrow = 1, labels = c('B', 'C'))
+		  nrow = 1, labels = c('B', 'C'), hjust = c(0, 1))
 plot_grid(month_n_art_plot, length_plot, nrow = 2, labels = c('A', ''))
 ```
 
 ### "ToxCast" Scores ###
 
-Table \ref{tab.toxcast100} shows the 100 terms most closely associated with "toxcast" in the dataset.  Figure \ref{fig.monthly_scores} shows monthly total ToxCast scores for the term "toxcast" by itself and the 10, 100, and 1000 terms most closely associated with "toxcast," *excluding February 2000*. 
+Table \ref{tab.toxcast100} shows the 100 terms most closely associated with "toxcast" in the dataset.  Figure \ref{fig.monthly_scores} shows monthly total ToxCast scores for the term "toxcast" by itself and the 10, 100, and 1000 terms most closely associated with "toxcast," excluding February 2000. In the remainder of this report, these sets of terms and scores are referred to as "toxcast10," "toxcast100," and "toxcast1000." 
 
 ```{r toxcast100}
 matrix(sort(toxcast100), nrow = 5) %>% t %>%
