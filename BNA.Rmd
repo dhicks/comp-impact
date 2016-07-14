@@ -33,7 +33,14 @@ This section applies text mining tools to analyze a large dataset of trade media
 
 ## Data ##
 
-*[XML parsing scripts]*
+```{r parse-xml, eval = FALSE}
+## BNA's API returns XML files with match metadata (title, publication date, 
+## a short description, etc.) and a link to the fulltext.  
+## This script parses the XML files into a combined CSV.  
+source('BNA data/parse_bna.R')
+## And this one uses the list of links to download fulltext
+source('BNA data/scrape_article_text.R')
+```
 
 ```{r setup}
 library(cowplot)
