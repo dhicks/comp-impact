@@ -6,7 +6,7 @@ output:
   html_document: default
 geometry: margin=1.5in
 ---
-```{r eval = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+```{r eval = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
 fig.height = 2.5
 fig.width = 1.5 * fig.height
 font_size = 8

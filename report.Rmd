@@ -4,8 +4,28 @@ author: "Daniel J. Hicks"
 output: 
     pdf_document:
         fig_caption: true
+        number_sections: true
+        toc: true
 geometry: margin=1.5in
+tables: yes
 ---
+
+```{r general_setup, echo = FALSE, warning = FALSE, messages = FALSE}
+fig.height = 2
+fig.width = 1.5 * fig.height
+font_size = 8
+
+knitr::opts_chunk$set(dev = 'tikz',
+			   fig.height = fig.height, fig.width = fig.width,
+			   fig.align='center', fig.pos = 't',
+			   sanitize = TRUE,
+			   echo = FALSE,
+			   warning = FALSE, message = FALSE,
+			   cache = TRUE
+			   )
+options(digits = 2, xtable.comment = FALSE, xtable.caption.placement = 'top')
+```
+
 
 # Executive Summary #
 
@@ -22,20 +42,8 @@ This report explores two quantitative approaches to assessing the social impact 
 
 *[more details]*
 
-```{r general_setup, echo = FALSE, warning = FALSE, messages = FALSE}
-fig.height = 2.5
-fig.width = 1.5*fig.height
-font_size = 8
-knitr::opts_chunk$set(dev = 'tikz',
-			   fig.height = fig.height, fig.width = fig.width,
-			   fig.align='center', fig.pos = 't',
-			   sanitize = FALSE,
-			   echo = FALSE,
-			   warning = FALSE, message = FALSE
-			   )
-options(digits = 1, xtable.comment = FALSE)
+```{r, child = 'altmetrics.Rmd'}
 ```
 
-*[sections in separate Rmds]*
-```{r, child = 'altmetrics.Rmd'}
+```{r, child = 'BNA.Rmd'}
 ```

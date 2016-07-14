@@ -7,7 +7,7 @@ output:
 geometry: margin=1.5in
 tables: yes
 ---
-```{r eval = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+```{r eval = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
 fig.height = 2.5
 fig.width = 1.5 * fig.height
 font_size = 8
@@ -19,17 +19,19 @@ knitr::opts_chunk$set(dev = 'tikz',
 			   echo = TRUE,
 			   warning = TRUE, message = TRUE
 			   )
-options(digits = 2, xtable.comment = FALSE)
+options(digits = 2, xtable.comment = FALSE, xtable.caption.placement = 'top')
 ```
 
 # Study 2: Bloomberg BNA #
 
 Media analysis provides one approach to assessing the impact of a public-interest scientific research program.  Traditional methods of media analysis require manual review of articles and other documents.  While these methods can provide a rich and nuanced understanding of the way scientific research is presented, and changes in this presentation over time, they may be too resource-intensive in some cases.  In such cases, text-mining tools — computational tools for quantitative analysis of large bodies of text — may be used to produce quick — but potentially "thin" or un-nuanced — analyses and suggest refined targets for analysis using classical techniques  
 
-This section applies text mining tools to analyze a large dataset of trade media coverage of regulatory toxicology.  *[The report addresses two questions:]*
+This section applies text mining tools to analyze a large dataset of trade media coverage of regulatory toxicology.  The report addresses two questions: 
 
 1. How has coverage of the ToxCast program, CSS, and high-throughput toxicology [HTT] more generally, changed over time?  
 2. When HTT is covered, how is it represented? 
+
+
 
 ## Data ##
 
@@ -178,12 +180,12 @@ scores_month = scores_month %>%
 		   tot_length.rs = as.vector(scale(tot_length)))
 ```
 
-To analyze the impact of CSS on this corpus, the analysis focused on the (normalized) term "toxcast" and associated terms, meaning terms that tend to appear in the same documents as "toxcast".  Sets of the 100, 500, and 1000 terms most strongly associated with "toxcast".  "Scores," occurrence frequencies across each of the four sets of terms, were calculated for each document, as both raw totals and normalized by document length.  Finally, scores were aggregated by month and linear trends over time were examined.  
+To examine coverage of CSS on this corpus, the analysis focused on the (normalized) term "toxcast" and associated terms, meaning terms that tend to appear in the same documents as "toxcast".  Sets of the 100, 500, and 1000 terms most strongly associated with "toxcast".  "Scores," occurrence frequencies across each of the four sets of terms, were calculated for each document, as both raw totals and normalized by document length.  Finally, scores were aggregated by month and linear trends over time were examined.  
 
 
 ### Sentiment Analysis ###
 
-Sentiment analysis uses manually-prepared reference lists of emotionally-laden terms to estimate the emotional valence of texts.  A text that frequently uses terms that human curators have judged to be "positive" or "fearful," say, will be assigned a high "positive" or "fearful" score.  While this technique is obviously useful for addressing research question 2, concerning the way HTT research is represented in the trade media, its results should not be over-interpreted.  Specifically, the results depend heavily on the content of the reference lists; do not take into account sentence structure; and are easily confounded by irony and other complex rhetorical constructions. *[cite]* 
+Sentiment analysis uses manually-prepared reference lists of emotionally-laden terms to estimate the emotional valence of texts.  In the particular technique used here, a text that frequently uses terms that human curators have judged to be "positive" or "fearful," say, will be assigned a high "positive" or "fearful" score [@Mohammad2013].  While this technique is obviously useful for addressing research question 2, concerning the way HTT research is represented in the trade media, its results should not be over-interpreted.  Specifically, the results depend heavily on the content of the reference lists; do not take into account sentence structure; and are easily confounded by irony and other complex rhetorical constructions. 
 
 Here a sentiment analysis tool was applied to every article in the corpus with a non-zero toxcast100 score.  The sentiment analysis tool estimates scores for ten emotional valences: "anger," "anticipation," "disgust," "fear," "joy," "sadness," "surprise," "trust," "negative," and "positive." Both raw (total frequency) and normalized (per 1,000 words in the article) sentiment scores were calculated.  
 
@@ -290,7 +292,7 @@ sapply(as.character(unique(scores_month$terms)), trends) %>%
 	select(rownames, toxcast:toxcast1k) %>%
 	kable(row.names = FALSE, 
 		  col.names = c('', 'toxcast', 'toxcast10', 'toxcast100', 'toxcast1000'),
-		  caption = 'Comparison of linear trends before and after January 2005. Trend values are annual changes in the number of articles per month.  Z:  Z-scores for the difference in trends. p: p-values of Z-scores against null hypothesis of no differences in trends. Articles from February 2000 are excluded from this analysis  \\label{tab.trends}',
+		  caption = 'Comparison of linear trends before and after January 2005. Trend values are annual changes in the number of articles per month.  Z:  Z-scores for the difference in trends. p: p-values of Z-scores against null hypotheses of no differences in trends. Articles from February 2000 are excluded from this analysis  \\label{tab.trends}',
 		  format = 'latex'
 		  #digits = 3
 		  )
@@ -329,7 +331,8 @@ The titles of the articles from these peaks indicate, first, that the toxcast100
 
 ### Sentiment Analysis ###
 
-```{r sentiment-histograms, fig.cap = 'Kernel density estimates of length-normalized sentiment analysis scores.  Scores are on x-axis (note log scale), with densities on the y-axis. Vertical line indicates scores = 10 (1% of all article words). February 2000 is excluded from this plot. \\label{fig.sent_scores}'}
+```{r sentiment-histograms, fig.cap = 'Kernel density estimates of length-normalized sentiment analysis scores.  Scores are on x-axis (note log scale), with densities on the y-axis. Vertical line indicates scores = 10 (1\\% of all article words). February 2000 is excluded from this plot. \\label{fig.sent_scores}'}
+# Kernel density estimates of length-normalized sentiment analysis scores.  Scores are on x-axis (note log scale), with densities on the y-axis. Vertical line indicates scores = 10 (1\\% of all article words). February 2000 is excluded from this plot. \\label{fig.sent_scores}
 ggplot(filter(toxcast_stories_m, month != ymd('2000-02-01')), 
 	   aes(value.norm, fill = variable)) + 
 	#geom_histogram(binwidth = 1) + 
@@ -402,23 +405,15 @@ plot_grid(sen_diff_density, sen_diff_time, labels = 'AUTO')
 
 Figure \ref{fig.sent_scores_time} also suggests that "trust" scores are generally greater than "fear" scores.  Figure \\ref{fig.sen_diff_trust} confirms this; trust scores are greater than fear scores for `r (1 - ecdf(toxcast_stories$diff_trust)(0)) * 100`% of articles.  
 
-## Key Analytical Decisions ##
+## Discussion ##
 
-- inclusion/exclusion criteria
-	- terms used for initial BNA search
-	- exclusion of February 2000
-- vocabulary normalization
-	- what stopwords were removed
-	- decision not to stem
-- "toxcast" as starting point for analysis
-- choice of distance function
-- size of "associated terms" sets
-- count-based analysis completely ignores structure and context
-- choice of date threshold
-- linear vs. non-linear trends
-- choice of sentiment analysis tool
-	- all of the assumptions and contingencies of this tool
-- raw vs. article-length-normalized statistics
-- level of aggregation (sentence, paragraph, article, month, quarter, year)
+This study examined trade media coverage of CSS research using two text-mining techniques.  The first technique identified a set of standardized terms that appeared to be specific to CSS-relevant stories; this study showed increasing attention to CSS research since 2005, thereby addressing research question 1.  This change over time is due in part, though not entirely, to changes in the number of stories per month and the length of stories.  Coverage tends to be more relevant to CSS research when it deals with general or broad regulatory uses of this research in the short- and medium-term.  The second technique assessed the emotional valence of terms used in CSS-relevant stories, thereby addressing research question 2.  These stories were consistently more positive than negative, and expressed trust more than fear.  These patterns were consistent over time, and did not appear to be associated with the degree to which the article was CSS-relevant.  
 
-*[section numbers]*
+### Key Analytical Decisions ###
+
+The analysis in this study depends heavily on a substantial number of analytical decisions and assumptions.  Regarding the underlying data, key decisions include the terms used for the initial BNA search, and the inclusion/exclusion criteria used to refine the set of results.  Both of the subsequent analyses are based on simple word counts, which completely ignore structure and context; aggregate at the article or monthly level (rather than sentence, paragraph, quarter, or year); involve various decisions to use raw or normalized/adjusted scores or statistics; and use statistical techniques that assume Gaussian distributions and linearity.  For the "ToxCast" scores analysis, key decisions include decisions about how vocabulary would be standardized (which stopwords were removed, personal names were not identified and handled separately, common stems such as -s and -ing were not removed), the decision to use "toxcast" as the starting point for analysis, the use of Jaccard distance to identify associated terms, the size of the sets of associated terms (and the use of size, and rather than a distance threshold, to define these sets), and a choice of a date threshold.  The sentiment analysis depended heavily on a particular sentiment analysis tool, which in turn had its own substantive assumptions [@Mohammad2013]. 
+
+While these decisions and assumptions do not invalidate the study's findings, it is highly plausible that they have made a difference in the findings — that the findings would have been different if decisions had been made differently — which does complicate the interpretation of the findings.  Further, because of the large number of decisions and assumptions, it is impractical to check the robustness of these findings by surveying the entire space of possible analyses.  
+
+The analysis described in this study should be considered exploratory rather than confirmatory.  The analysis was not hypothesis-based, but instead aimed to show how text-mining tools could be used to examine a large body of trade media coverage and identify some interesting phenomena.  Some of these phenomena could be used as hypotheses for confirmatory studies; or they could be used to develop potential communication strategies, which could then be studied experimentally.  
+
