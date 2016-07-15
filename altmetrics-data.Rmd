@@ -3,15 +3,23 @@ geometry: margin=1.5in
 output:
   pdf_document:
     fig_caption: yes
+tables: yes
 ---
 ```{r eval = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
-fig.height = 2.5
+fig.height = 2
 fig.width = 1.5 * fig.height
 font_size = 8
 
-knitr::opts_chunk$set(fig.height = fig.height, fig.width = fig.width, 
-					  echo = FALSE, message=FALSE, warning=FALSE)
-
+knitr::opts_chunk$set(dev = 'tikz',
+			   fig.height = fig.height, fig.width = fig.width,
+			   fig.align='center', fig.pos = 't',
+			   sanitize = TRUE,
+			   echo = FALSE,
+			   warning = FALSE, message = FALSE,
+			   cache = FALSE
+			   )
+options(digits = 2, xtable.comment = FALSE, xtable.caption.placement = 'top', 
+		xtable.include.rownames = FALSE)
 ```
 
 ## Data ##
@@ -32,13 +40,14 @@ system2('python3', 'publications\\ data/extract_ids_NCCT.py')
 system3('python3', 'publications\\ data/stics_to_doi.py')
 ```
 
-```{r setup_data}
+```{r setup_data, cache = FALSE}
 library(cowplot)
 	theme_set(theme_cowplot(font_size = font_size))
 library(dplyr)
 library(knitr)
 library(rjson)
 library(reshape2)
+library(xtable)
 
 folder = 'publications data/scraped pubs/'
 
@@ -50,7 +59,7 @@ ids_css$doi = gsub('http://dx.doi.org/', '', ids_css$doi)
 
 ids_ncct = read.csv(paste(folder, 'ids_ncct.csv', sep = ''), 
 					stringsAsFactors = FALSE)
-ids_ncct = ids_ncct['Pub.Yr' >= 2011]$DOI
+ids_ncct = ids_ncct[ids_ncct$'Pub.Yr' >= 2011,]$DOI
 ids_ncct = data.frame(doi = ids_ncct, ncct = TRUE, stringsAsFactors = FALSE)
 
 stics_q = read.csv(paste(folder, 'stics_q.csv', sep = ''), 
@@ -69,32 +78,35 @@ dataf = full_join(ids_css, ids_ncct) %>% full_join(stics_q) %>%
 	full_join(stics_uq) %>% 
 	filter(doi != '')
 dataf[is.na(dataf)] = FALSE
+## Remove duplicates
+dataf = unique(dataf)
 
 db_names = c('EndNote', 'NCCT', 'STICS\n(Quoted)', 'STICS\n(Unquoted)')
 ```
 
-Manual inspection of the STICS search results identified several apparent false matches; publications with no EPA-affiliated authors were discarded. 
+Manual inspection of the results identified several apparent false matches; publications with no EPA-affiliated authors were discarded. 
 
 ```{r remove_nonepa}
-# write.csv({dataf %>% filter(!ncct, !(stics.q & stics.uq)) %>% .[['doi']]},
-# 			file = 'scraped pubs/poss nonepa.csv')
+# write.csv({dataf %>% filter(!(stics.q & stics.uq)) %>% .[['doi']]},
+# 			file = 'publications data/scraped pubs/poss nonepa.csv')
 # stop()
-nonepa = read.csv(paste(folder, 'poss nonepa.csv', sep = '')) %>% filter(!epa) %>% .[['doi']] %>% as.character
+nonepa = read.csv(paste(folder, 'poss nonepa.csv', sep = '')) %>%
+	filter(!epa|is.na(epa)) %>% .[['doi']] %>% as.character
 # dataf %>% filter(doi %in% nonepa) %>% select(stics.q, stics.uq, endnote) %>% table
 dataf = dataf %>% filter(!(doi %in% nonepa))
 ```
 
-```{r}
+```{r results='asis'}
 dataf %>% select(endnote:stics.uq) %>% summarize_each(funs = 'sum') %>% 
-	kable(col.names = gsub('\n', ' ', db_names), 
-		  format = 'latex',
+	setNames(gsub('\n', ' ', db_names)) %>%
+	xtable(format = 'latex',
 		  caption = 'Publications with DOIs found in each database/search 
 		  				\\label{tab.test}')
 ```
 
-Table \ref{tab.test} gives an overview of the number of DOIs included in each database/search.  Combining the results of all four database/searches yields a total of `r length(unique(dataf$doi))` distinct DOIs.  Both of the two STICS searches include a majority of these DOIs; the EndNote database contains somewhat fewer than half; and the NCCT database contains just under 25% of all DOIs.  
+Table \ref{tab.test} gives an overview of the number of DOIs included in each database/search.  Combining the results of all four database/searches yields a total of `r length(unique(dataf$doi))` distinct DOIs.  Both of the two STICS searches include a majority of these DOIs; the EndNote database contains somewhat fewer than half; and the NCCT database contains just over 10% of all DOIs.  
 
-```{r papers_dbs, fig.width = 1.5 * fig.width, fig.cap = 'Distribution of individual papers across the four database/searches. \\textbf{A}: Each paper is represented by a single row; a red cell indicates that the given paper is included in the given database/search. \\textbf{B}: Each paper is represented by an unbroken line across the parallel coordinates. Y-axis indicates whether the given paper is included in the given database/search. \\label{fig.papers_dbs}'}
+```{r papers_dbs, fig.width = 1.75 * fig.width, fig.cap = 'Distribution of individual papers across the four database/searches. \\textbf{A}: Each paper is represented by a single row; a red cell indicates that the given paper is included in the given database/search. \\textbf{B}: Each paper is represented by an unbroken line across the parallel coordinates. Y-axis indicates whether the given paper is included in the given database/search. \\label{fig.papers_dbs}'}
 db_pubs_1 = ggplot(data = {dataf %>% melt(id.vars = 'doi', 
 										  variable.name = 'database')},
 	   aes(doi, database, fill = value)) +
