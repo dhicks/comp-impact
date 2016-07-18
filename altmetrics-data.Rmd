@@ -44,7 +44,7 @@ system3('python3', 'publications\\ data/stics_to_doi.py')
 library(cowplot)
 	theme_set(theme_cowplot(font_size = font_size))
 library(dplyr)
-library(knitr)
+#library(knitr)
 library(rjson)
 library(reshape2)
 library(xtable)
@@ -127,7 +127,7 @@ plot_grid(db_pubs_1, db_pubs_2, ncol = 2, labels = 'AUTO', align = 'v')
 
 Figure \ref{fig.papers_dbs} shows the distribution of every individual paper across the four database/searches, as lit cells in a heatmap and as lines across parallel coordinates.  These plots indicate that the two STICS searches include almost exactly the same publications, and that there is *[relatively little overlap between NCCT and the other database/searches]*.  Tables \ref{tab.dist} and \ref{tab.STICSconcordance} make these same points quantitatively.  
 
-```{r}
+```{r results='asis'}
 # dataf %>% select(endnote:stics.uq) %>% summary
 dist = dataf %>% group_by(stics.q, stics.uq, endnote, ncct) %>% 
 	summarize(n = n())

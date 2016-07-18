@@ -25,12 +25,19 @@ knitr::opts_chunk$set(dev = 'tikz',
 			   cache = TRUE
 			   )
 options(digits = 2, xtable.comment = FALSE, xtable.caption.placement = 'top', 
-		xtable.include.rownames = FALSE)
+		xtable.include.rownames = FALSE, 
+		xtable.table.placement = 't')
 
 ## After http://stackoverflow.com/questions/18965637/set-global-thousand-separator-on-knitr
 knitr::knit_hooks$set(inline = function(x) {
 	if (is.numeric(x)) {
-		format(x, big.mark=',', scientific = FALSE)
+		## If we want to use scientific notation, pass it to knitr's formatting function
+		if ((abs(x) > 10^6)|abs(x) < 10^-4) {
+			knitr:::format_sci(x, 'latex')
+		} else {
+			## Otherwise use format to get thousands separators
+			format(x, big.mark = ',', scientific = FALSE, digits = 2)
+		}
 	} else {
 		x
 	}
@@ -42,6 +49,23 @@ knitr::knit_hooks$set(inline = function(x) {
 
 *[write this]*
 
+- printed/electronic speech acts are easy to study, because by definition they leave tangible records that can be gathered with relatively little effort
+- effects on the audience are more difficult to study, because 
+	- there are not necessarily tangible records of their reactions, etc.
+	- the audience itself may not be well-defined
+	- the goals of communication may not be well-defined
+	- who are you trying to influence, and what do you want them to do differently? 
+	
+	
+- to work within the communication status quo described in this report:
+	- encourage high-tweeting accounts to tweet more
+	- strategically emphasize topics that receive more attention, such as the way CSS research will be used under the new TSCA
+- to push against the communication status quo:  
+	- encourage a more diverse range of tweeters to tweet about CSS research
+	- strategically emphasize topics that are underdisseminated, such as the smaller roles CSS research is playing through EPA
+	
+*[what happened to that l'oreal story?]*
+
 
 # Introduction #
 
@@ -52,6 +76,8 @@ For many areas of EPA research, there are established pathways for deploying res
 This report explores two quantitative approaches to assessing the social impact of CSS research.  Both approaches rely on data-intensive, computational tools.  The report examines data and model-based challenges to deploying and interpreting the outputs of these tools; besides reporting some preliminary findings, this report also offers suggestions for how EPA can improve its ability to use these tools to assess and improve the social impact of its research.  
 
 *[more details]*
+
+*[note on reproducibility]*
 
 ```{r, child = 'altmetrics.Rmd'}
 ```

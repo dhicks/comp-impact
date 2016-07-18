@@ -7,7 +7,7 @@ output:
     keep_tex: yes
 tables: yes
 ---
-```{r eval = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+```{r eval = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
 fig.height = 2.5
 fig.width = 1.5 * fig.height
 font_size = 8
@@ -22,6 +22,10 @@ knitr::opts_chunk$set(dev = 'tikz',
 options(digits = 2, xtable.comment = FALSE, xtable.caption.placement = 'top', 
 		xtable.include.rownames = FALSE)
 ```
+
+*[Tina doesn't want to hear "quick and shallow is too limited to be informative"]
+- quick and dirty can suggest hypotheses and strategies to be examined more carefully
+- monthly and quarterly indicators - a quick check on latest developments
 
 # Study 1: Altmetrics #
 

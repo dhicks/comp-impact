@@ -180,7 +180,7 @@ scores_month = scores_month %>%
 		   tot_length.rs = as.vector(scale(tot_length)))
 ```
 
-To examine coverage of CSS within this corpus, the analysis focused on the (normalized) term "toxcast" and associated terms, meaning terms that tend to appear in the same documents as "toxcast,"" as well as sets of the 100, 500, and 1000 terms most strongly associated with "toxcast".  "Scores," occurrence frequencies across each of the four sets of terms, were calculated for each document, as both raw totals and normalized by document length.  Finally, scores were aggregated by month and linear trends over time were examined.  
+To examine coverage of CSS within this corpus, the analysis focused on the (normalized) term "toxcast" and associated terms, meaning terms that tend to appear in the same documents as "toxcast," as well as sets of the 100, 500, and 1000 terms most strongly associated with "toxcast".  "Scores," occurrence frequencies across each of the four sets of terms, were calculated for each document, as both raw totals and normalized by document length.  Finally, scores were aggregated by month and linear trends over time were examined.  
 
 
 ### Sentiment Analysis ###
@@ -211,10 +211,10 @@ toxcast_stories = toxcast_stories_m %>%
 ## Results ##
 
 Publication date, title, byline, and full text were obtained for `r nrow(dataf)` articles. After normalization, the vocabulary included `r termdoc$nrow` distinct terms and a total of $`r dataf %>% .[['length']] %>% sum`$ tokens (word-instances).  See figure \ref{fig.monthly}. The large spike in total length in February 2000 is due to five long, high-level EPA policy documents apparently republished by BNA.  Consequently, articles from February 2000 are generally excluded from the analyses below.  After excluding February 2000, the corpus contained 
-`r dataf %>% filter(month != ymd('2000-02-01')) %>% .[['length']] %>% sum` 
+$`r dataf %>% filter(month != ymd('2000-02-01')) %>% .[['length']] %>% sum`$ 
 tokens.  
 
-```{r articles_time, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'Overview of the BNA dataset. \\textbf{A}: Number of articles published each month. \\textbf{B} and \\textbf{C}: Total length of articles per month (total token acount after normalization).  \\textbf{C} omits `r dataf %>% filter(length > 5000) %>% nrow` months with more than 5,000 total tokens. \\label{fig.monthly}'}
+```{r articles_time, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'Overview of the BNA dataset. \\textbf{A}: Number of articles published each month. \\textbf{B} and \\textbf{C}: Total length of articles per month (total token acount after normalization).  \\textbf{C} omits months with more than 5,000 total tokens. \\label{fig.monthly}'}
 month_n_art_plot = ggplot(data = dataf, aes(x = month)) + 
 	geom_line(stat = 'count', color = 'blue') + 
 	xlab('month') + ylab('no. articles')
@@ -230,7 +230,7 @@ plot_grid(month_n_art_plot, length_plot, nrow = 2, labels = c('A', ''))
 
 Table \ref{tab.toxcast100} shows the 100 terms most closely associated with "toxcast" in the dataset.  Figure \ref{fig.monthly_scores} shows monthly total ToxCast scores for the term "toxcast" by itself and the 10, 100, and 1000 terms most closely associated with "toxcast," excluding February 2000. In the remainder of this report, these sets of terms and scores are referred to as "toxcast10," "toxcast100," and "toxcast1000." 
 
-```{r toxcast100}
+```{r toxcast100, results='asis'}
 matrix(sort(toxcast100), nrow = 5) %>% t %>%
 	as.data.frame() %>%
 	setNames(rep('', 5)) %>%
@@ -269,10 +269,9 @@ ggplot(data = {scores_month %>% filter(month != ymd('2000-02-01'))},
 
 The first instance of "toxcast" was on 
 `r scores_month %>% filter(terms == 'toxcast', score > 0) %>% .[['month']] %>% min %>% format(format = '%B %e, %Y')
-`.  
-The plot suggests that, after January 2005, the term "toxcast" occurred more frequently but roughly constantly. The toxcast10 set shows a steady increase over the entire period 2000-2016; notably, toxcast100 and toxcast1000 show decreasing trends prior to January 2005, then increasing trends after this point.  Table \ref{tab.trends} confirms this visual impression, finding statistically significant differences in trends before and after January 2005 for the toxcast100 and toxcast1000 sets of terms.  
+`.  The plot suggests that, after January 2005, the term "toxcast" occurred more frequently but roughly constantly. The toxcast10 set shows a steady increase over the entire period 2000-2016; notably, toxcast100 and toxcast1000 show decreasing trends prior to January 2005, then increasing trends after this point.  Table \ref{tab.trends} confirms this visual impression, finding statistically significant differences in trends before and after January 2005 for the toxcast100 and toxcast1000 sets of terms.  
 
-```{r monthly_scores_coeff}
+```{r monthly_scores_coeff, results='asis'}
 ## Regression slopes before and after the threshold date
 trends = function (termset) {
 	fit_before = lm(data = filter(scores_month, terms == termset, 
@@ -287,22 +286,28 @@ trends = function (termset) {
 						   trend_before_se = summary(fit_before)$coefficients['month.rs', 'Std. Error'],
 						   trend_after_se = summary(fit_after)$coefficients['month.rs', 'Std. Error']) %>%
 			mutate(z = (trend_after - trend_before)/sqrt(trend_after_se^2 + trend_before_se^2), 
+				   ## Pass through the inline knit hook *now* in order to get 
+				   ##  scientific notation consistent w/ rest of document
+				   #p = knit_hooks$get('inline')(1 - pnorm(abs(z))))
 				   p = 1 - pnorm(abs(z)))
 	rownames(return_df) = termset
 	return(return_df)
 }
 
-sapply(as.character(unique(scores_month$terms)), trends) %>% 
+sapply(as.character(unique(scores_month$terms)), trends) %>% t %>%
 	as.data.frame() %>%
-	mutate(rownames = c('Trend (Before)', 'Trend (After)', 'Trend (Before, SE)', 
-		  			  'Trend (After, SE)', 'Z', 'p')) %>%
-	select(rownames, toxcast:toxcast1k) %>%
-	setNames(c('', 'toxcast', 'toxcast10', 'toxcast100', 'toxcast1000')) %>%
+	mutate(rownames = c('toxcast', 'toxcast10', 'toxcast100', 'toxcast1000')) %>%
+	select(rownames, trend_before, trend_before_se, trend_after, trend_after_se, z, p) %>%
+	setNames(c('', 
+			   'Trend (Before)',
+			   '(SE)', 
+		  		'Trend (After)', 
+			   	'(SE)', 'Z', 'p')) %>%
 	xtable(#row.names = FALSE,
 		  caption = 'Comparison of linear trends before and after January 2005. Trend values are annual changes in the number of articles per month.  Z:  Z-scores for the difference in trends. p: p-values of Z-scores against null hypotheses of no differences in trends. Articles from February 2000 are excluded from this analysis  \\label{tab.trends}',
-		  format = 'latex'
-		  #digits = 3
-		  )
+		  digits = c(rep(1, 2), rep(1, 2), rep(2, 2), 2, 2),
+		  display = c(rep('s', 2), rep('f', 4), 'f', 'e'),
+		  format = 'latex')
 ```
 
 Since scores are based on word frequencies, they are likely to be affected by the number of articles per month and the total length of those articles.  Figure \ref{fig.monthly_scores_control} plots scores after adjusting for these two factors.  After adjustment, "toxcast" shows a striking downward trend before 2005; the length of the articles were gradually changing over this period, and so the model expects to see an increase, but "toxcast" does not occur at all, so the trend line runs down.  The other three sets of terms exhibit roughly the same pattern, with flat trends before 2005 and modestly increasing trends afterwards.  This suggests, first, that the decreasing pre-2005 trends in figure \ref{fig.monthly_scores} are due to changes in the number of articles and total length; and second, that the increasing post-2005 trends are not only due to changes in the number of articles and total length.  

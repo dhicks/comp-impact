@@ -113,17 +113,27 @@ ggplot(data = {tweets %>% group_by(account_loc) %>%
 #ggplot(data = tweets, aes(x = month, color = account_loc)) + geom_line(stat = 'count')
 ```
 
-The `r sum(tweeters$n_tweets)` tweets were made by `r nrow(tweeters)` distinct accounts.  `r {tweeters %>% filter(n_tweets == 1) %>% nrow}` accounts (`r ecdf(tweeters$n_tweets)(2) * 100`%) made only a single tweet of a CSS paper, while `r {tweeters %>% filter(n_tweets >= 5) %>% nrow}` accounts made 5 or more tweets; see figure \ref{fig.accounts_hist} and table \ref{tab.high_tweeters}.  Many of these relatively high-tweeting accounts promote recent publications in a scientific topic, in a journal, or of potential interest to members of a professional society.  
+The `r sum(tweeters$n_tweets)` tweets were made by `r nrow(tweeters)` distinct accounts.  `r {tweeters %>% filter(n_tweets == 1) %>% nrow}` accounts (`r ecdf(tweeters$n_tweets)(2) * 100`%) made only a single tweet of a CSS paper, while `r {tweeters %>% filter(n_tweets >= 5) %>% nrow}` accounts made 5 or more tweets; see figure \ref{fig.tweeters} and table \ref{tab.high_tweeters}.  Many of these relatively high-tweeting accounts promote recent publications in a scientific topic, in a journal, or of potential interest to members of a professional society.  
 
-```{r fig.cap = 'Histogram of tweets per account \\label{fig.accounts_hist}'}
+```{r fig.width = 1.5 * fig.width, fig.cap = 'Accounts tweeting CSS papers.  \\textbf{A}: Histogram of tweets per account.  \\textbf{B}: Scatterplot of tweets and followers per account.  Colored lines are curves where total reach (no. followers $\\times$ no. tweets) $= k$, for $k = 10^4$ (red), $10^3$ (green), and $10^2$ (blue). \\label{fig.tweeters}'}
 ## Histogram of tweeters
-ggplot(data = tweeters, aes(x = n_tweets)) + geom_bar() +
+accounts_hist = ggplot(data = tweeters, aes(x = n_tweets)) + 
+	geom_bar(fill = 'blue') +
 	#scale_x_log10(breaks=c(1, seq(2, 18, by = 2)), name = 'no. tweets') +
 	xlab('no. tweets') +
 	ylab('no. accounts')
+## No. folloewrs by no. tweets
+accounts_followers = ggplot(tweeters, aes(n_tweets, n_followers)) + geom_point() +
+	stat_function(fun = function (x) {10^4/x}, color = 'red') +
+	stat_function(fun = function (x) {10^3/x}, color = 'green4') +
+	stat_function(fun = function (x) {10^2/x}, color = 'blue') +
+	scale_x_continuous(name = 'no. tweets', breaks = c(1,10)) +
+	scale_y_continuous(name = 'no. followers', breaks = 10^(0:5)) +
+	coord_trans(x = 'log10', y = 'log10')
+plot_grid(accounts_hist, accounts_followers, labels = 'AUTO', hjust = 0)
 ```
 
-```{r}
+```{r results='asis'}
 ## List of relatively high number of tweeters
 tweeters %>% mutate(net.reach = n_tweets * n_followers) %>%
 	filter(net.reach > 10^4 | n_tweets >= 5) %>%
@@ -131,7 +141,7 @@ tweeters %>% mutate(net.reach = n_tweets * n_followers) %>%
 	arrange(desc(net.reach)) %>%
 	setNames(c('account', 'no. tweets', 'no. followers', 'total reach', 'location')) %>%
 	xtable(format = 'latex',
-		  caption = 'Twitter accounts producing more than 5 tweets of CSS publications or total reach (no. followers $\times$ no. tweets) greater than 10,000  \\label{tab.high_tweeters}', digits = 0)
+		  caption = 'Twitter accounts producing more than 5 tweets of CSS publications or total reach (no. followers $\\times$ no. tweets) greater than 10,000  \\label{tab.high_tweeters}', digits = 0)
 ```
 
 
@@ -139,7 +149,7 @@ tweeters %>% mutate(net.reach = n_tweets * n_followers) %>%
 
 In marketing, *reach* refers to the size of the potential audience.  The Altmetrics API provides the number of followers at the time of each individual tweet for at least some accounts.  These follower counts can be used to estimate reach at the paper level and over time.  (Note that the followers for two given tweets can overlap, and follower counts appear to be unavailable for a substantial number of accounts, so these estimates are susceptible to errors that are difficult to correct.)  Aggregated both ways, reach varies over more than two orders of magnitude.  See figure \ref{fig.reach}. 
 
-```{r fig.width = 2*fig.width, fig.cap = 'Kernel density estimates of estimated reach. \\textbf{A}: Reach per paper. \\textbf{B}: Reach per month. \\label{fig.reach}'}
+```{r fig.width = 1.5*fig.width, fig.cap = 'Kernel density estimates of estimated reach. \\textbf{A}: Reach per paper. \\textbf{B}: Reach per month. \\label{fig.reach}'}
 ## Estimate reach per paper
 reach_by_paper <- tweets %>% group_by(paper_doi) %>% 
 						summarize(reach = sum(account_followers, na.rm = TRUE))
@@ -192,9 +202,9 @@ papers <- left_join(papers,
 					   )
 ```
 
-*Delay* can be defined as the time between publication date (as recorded in the Altmetrics metadata) and the first tweet.  Delay had a mean of `r mean(papers$delay, na.rm = T)` days and median of `r median(papers$delay, na.rm = T)` days, with an interquartile range of `r IQR(papers$delay, na.rm = T)` days.  `r ecdf(papers$delay)(7) * 100`% of papers had a delay of less than 7 days; notably, `r ecdf(papers$delay)(0) * 100`% of papers had a negative delay, indicating that the paper was first tweeted before it was officially published (according to Altmetric's records).  No relationship was identified between delay and the total number of tweets received by a paper.  See figure \ref{fig.delay} and table \ref{tab.delay}.  
+*Delay* can be defined as the time between publication date (as recorded in the Altmetrics metadata) and the first tweet.  Delay had a mean of `r as.numeric(mean(papers$delay, na.rm = T))` days and median of `r as.numeric(median(papers$delay, na.rm = T))` days, with an interquartile range of `r IQR(papers$delay, na.rm = T)` days.  `r ecdf(papers$delay)(7) * 100`% of papers had a delay of less than 7 days; notably, `r ecdf(papers$delay)(0) * 100`% of papers had a negative delay, indicating that the paper was first tweeted before it was officially published (according to Altmetric's records).  No relationship was identified between delay and the total number of tweets received by a paper.  See figure \ref{fig.delay} and table \ref{tab.delay}.  
 
-```{r delay_plot, fig.width = 1.5 * fig.width, fig.cap = 'Delay. \\textbf{A}: Kernel density estimate of delay. \\textbf{B} and \\textbf{C}: Scatterplot of the total number of tweets vs. delay.  Grey rectangles in the two plots correspond.  Blue line is a linear regression for the entire dataset.\\label{fig.delay}'}
+```{r delay_plot, fig.width = 1.5 * fig.width, fig.height = 1.5 * fig.height, fig.cap = 'Delay. \\textbf{A}: Kernel density estimate of delay. \\textbf{B} and \\textbf{C}: Scatterplot of the total number of tweets vs. delay.  Grey rectangles in the two plots correspond.  Blue line is a linear regression for the entire dataset.\\label{fig.delay}'}
 ## KDE of delay
 delay_kde = ggplot(data = papers, aes(x = delay)) + 
 	geom_density(alpha = .5, position = 'stack') +
@@ -219,11 +229,11 @@ tweets_delay_zoom <- tweets_delay_plot +
 	coord_cartesian(xlim = c(xmin, xmax), ylim = c(ymin, ymax))
 #tweets_delay_all; tweets_delay_zoom
 tweets_delay_comb = plot_grid(tweets_delay_all, tweets_delay_zoom, 
-							  labels = c('B', 'C'), hjust = 0)
-plot_grid(delay_kde, tweets_delay_comb, nrow = 2, labels = c('A', NA), hjust = 0)
+							  labels = c('B', 'C'), hjust = .0, scale = .9)
+plot_grid(delay_kde, tweets_delay_comb, nrow = 2, labels = c('A', NA), hjust = .0)
 ```
 
-```{r delay_table}
+```{r delay_table, results='asis'}
 ## There's no evidence of a relationship here
 #lm(data = papers, n_tweets ~ delay) %>% summary
 
@@ -240,11 +250,11 @@ data.frame(week = seq(0, 4)) %>%
 # 	kable
 ```
 
-Similarly, *lifespan* can be defined as the time between the first and last tweet.  Lifespan had a mean of `r mean(papers$lifespan, na.rm = T)` days and median of `r median(papers$lifespan, na.rm = T)*24` *hours*, with an interquartile range of `r IQR(papers$lifespan, na.rm = T)` days.  `r ecdf(papers$lifespan)(7) * 100`% of papers had a lifespan of less than 7 days. Note that `r papers %>% filter(lifespan == 0) %>% nrow` papers received only a single tweet, and thus had a lifespan of 0; excluding these papers, mean lifespan is 
-`r papers %>% filter(lifespan > 0) %>% .[['lifespan']] %>% mean(na.rm = T)` days and median lifespan is 
-`r papers %>% filter(lifespan > 0) %>% .[['lifespan']] %>% median(na.rm = T)` days.  See figure \ref{fig.span} and table \ref{tab.span}. 
+Similarly, *lifespan* can be defined as the time between the first and last tweet.  Lifespan had a mean of `r as.numeric(mean(papers$lifespan, na.rm = T))` days and median of `r as.numeric(median(papers$lifespan, na.rm = T))*24` *hours*, with an interquartile range of `r IQR(papers$lifespan, na.rm = T)` days.  `r ecdf(papers$lifespan)(7) * 100`% of papers had a lifespan of less than 7 days. Note that `r papers %>% filter(lifespan == 0) %>% nrow` papers received only a single tweet, and thus had a lifespan of 0; excluding these papers, mean lifespan is 
+`r papers %>% filter(lifespan > 0) %>% .[['lifespan']] %>% mean(na.rm = T) %>% as.numeric()` days and median lifespan is 
+`r papers %>% filter(lifespan > 0) %>% .[['lifespan']] %>% median(na.rm = T) %>% as.numeric()` days.  See figure \ref{fig.span} and table \ref{tab.span}. 
 
-```{r lifespan_plot, fig.width = 1.5 * fig.width, fig.cap = 'Lifespan, time between first and last tweet. \\textbf{A}: Kernel density estimate of lifespan \\textbf{B} and \\textbf{C}: Scatterplot of the total number of tweets vs. lifespan.  Grey rectangles in the two plots correspond.  Blue line is a linear regression for the entire dataset. \\label{fig.span}'}
+```{r lifespan_plot, fig.width = 1.5 * fig.width, fig.height = 1.5 * fig.height, fig.cap = 'Lifespan, time between first and last tweet. \\textbf{A}: Kernel density estimate of lifespan \\textbf{B} and \\textbf{C}: Scatterplot of the total number of tweets vs. lifespan.  Grey rectangles in the two plots correspond.  Blue line is a linear regression for the entire dataset. \\label{fig.span}'}
 ## KDE of lifespan
 lifespan_kde = ggplot(data = papers, aes(x = lifespan)) + 
 	geom_density(alpha = .5, position = 'stack') +
@@ -267,11 +277,11 @@ tweets_span_zoom <- tweets_span_plot +
 	stat_smooth(method = 'lm', alpha = .1) + 
 	coord_cartesian(xlim = c(xmin, xmax), ylim = c(ymin, ymax))
 tweets_span_comb = plot_grid(tweets_span_all, tweets_span_zoom, 
-	labels = c('B', 'C'), hjust = 0)
+	labels = c('B', 'C'), hjust = 0, scale = .9)
 plot_grid(lifespan_kde, tweets_span_comb, nrow = 2, labels = c('A', NA), hjust = 0)
 ```
 
-```{r lifespan_table}
+```{r lifespan_table, results='asis'}
 ## There's no evidence of a relationship here, either
 #lm(data = papers, n_tweets ~ lifespan) %>% summary
 
@@ -280,7 +290,8 @@ data.frame(week = seq(0, 14, by = 2)) %>%
 	mutate(percentile = ecdf(papers$lifespan)(week*7) * 100) %>%
 	xtable(format = 'latex',
 		  caption = 'Lifespan, cumulative percentiles, by week 
-		  				\\label{tab.span}')
+		  				\\label{tab.span}', 
+		  digits = 0)
 # data.frame(decimal = seq(.10, .90, by = .20)) %>%
 # 	transmute(percentile = decimal * 100, 
 # 			  days = as.numeric(quantile(papers$lifespan, 
