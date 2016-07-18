@@ -1,5 +1,6 @@
 import json
 import os.path
+import numpy as np
 import pandas as pd
 import re
 import requests
@@ -122,7 +123,7 @@ for id in ids:
 		try:
 			account_followers = tweet['author']['followers']
 		except KeyError:
-			account_followers = 0
+			account_followers = np.nan
 		try:
 			account_loc = tweet['author']['geo']['country']
 		except KeyError:
