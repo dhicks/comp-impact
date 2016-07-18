@@ -24,9 +24,9 @@ options(digits = 2, xtable.comment = FALSE, xtable.caption.placement = 'top')
 
 # Study 2: Bloomberg BNA #
 
-Media analysis provides one approach to assessing the impact of a public-interest scientific research program.  Traditional methods of media analysis require manual review of articles and other documents.  While these methods can provide a rich and nuanced understanding of the way scientific research is presented, and changes in this presentation over time, they may be too resource-intensive in some cases.  In such cases, text-mining tools — computational tools for quantitative analysis of large bodies of text — may be used to produce quick — but potentially "thin" or un-nuanced — analyses and suggest refined targets for analysis using classical techniques  
+Media analysis provides one approach to assessing the impact of a public-interest scientific research program.  Traditional methods of media analysis require manual review of articles and other documents.  While these methods can provide a rich and nuanced understanding of the way scientific research is represented to the public, and changes in this representation over time, they may be too resource-intensive in some cases.  In such cases, text-mining tools — computational tools for quantitative analysis of large bodies of text — may be used to produce quick — but potentially "thin" or un-nuanced — analyses and suggest refined targets for analysis using classical techniques  
 
-This section applies text mining tools to analyze a large dataset of trade media coverage of regulatory toxicology.  The report addresses two questions: 
+This section applies text mining tools to analyze a large dataset of trade media coverage of regulatory toxicology.  This study addresses two questions: 
 
 1. How has coverage of the ToxCast program, CSS, and high-throughput toxicology [HTT] more generally, changed over time?  
 2. When HTT is covered, how is it represented? 
@@ -75,7 +75,7 @@ dataf = dataf %>% transmute(date = {dmy_hms(pubDate) %>%
 		   	   title))
 ```
 
-With assistantance from Bloomberg BNA staff, BNA's web API was used to retrieve all articles with the keyword "toxicology" published since 2000.  Article metadata were retrieved in XML files; custom R scripts were used to parse and combine these XML files, then retrieve text and byline for each article.  Manual inspection of the resulting article set found several hundred items that were short summaries of *Federal Register* notices, announcements of public comment periods, lists of events, and other article types that were judged to be irrelevant; all of these article types were removed.    
+With assistantance from Bloomberg BNA staff, BNA's web API was used to retrieve all articles using the word "toxicology" published since 2000.  Article metadata were retrieved in XML files; custom R scripts were used to parse and combine these XML files, then retrieve text and byline for each article.  Manual inspection of the resulting article set found several hundred items that were short summaries of *Federal Register* notices, announcements of public comment periods, lists of events, and other article types that were judged to be irrelevant; all of these article types were removed.    
 
 Because BNA's own database was queried directly using the API, the dataset can be considered complete and error-free.  One remaining potential source of data error is the inclusion of repeated or duplicate articles.  Manual review of titles and a programmatic check for duplicate titles indicated no duplicate articles.  
 ```{r dupes_check, eval = FALSE}
@@ -156,7 +156,7 @@ scores = lapply(
 		 toxcast1k = toxcast1k), 
 	function(x) tm_term_score(termdoc, x)) %>% 
 	as.data.frame
-dataf = dataf %>% mutate(length = {as.matrix(termdoc) %>% colSums()}) %>%
+dataf = dataf %>% mutate(length = {termdoc %>% as.matrix %>% colSums}) %>%
 	cbind(scores)
 rm(scores)
 
@@ -180,14 +180,14 @@ scores_month = scores_month %>%
 		   tot_length.rs = as.vector(scale(tot_length)))
 ```
 
-To examine coverage of CSS on this corpus, the analysis focused on the (normalized) term "toxcast" and associated terms, meaning terms that tend to appear in the same documents as "toxcast".  Sets of the 100, 500, and 1000 terms most strongly associated with "toxcast".  "Scores," occurrence frequencies across each of the four sets of terms, were calculated for each document, as both raw totals and normalized by document length.  Finally, scores were aggregated by month and linear trends over time were examined.  
+To examine coverage of CSS within this corpus, the analysis focused on the (normalized) term "toxcast" and associated terms, meaning terms that tend to appear in the same documents as "toxcast,"" as well as sets of the 100, 500, and 1000 terms most strongly associated with "toxcast".  "Scores," occurrence frequencies across each of the four sets of terms, were calculated for each document, as both raw totals and normalized by document length.  Finally, scores were aggregated by month and linear trends over time were examined.  
 
 
 ### Sentiment Analysis ###
 
-Sentiment analysis uses manually-prepared reference lists of emotionally-laden terms to estimate the emotional valence of texts.  In the particular technique used here, a text that frequently uses terms that human curators have judged to be "positive" or "fearful," say, will be assigned a high "positive" or "fearful" score [@Mohammad2013].  While this technique is obviously useful for addressing research question 2, concerning the way HTT research is represented in the trade media, its results should not be over-interpreted.  Specifically, the results depend heavily on the content of the reference lists; do not take into account sentence structure; and are easily confounded by irony and other complex rhetorical constructions. 
+Sentiment analysis uses manually-prepared reference lists of emotionally-laden terms to estimate the emotional valence of texts.  In the particular technique used here, each text is assigned an emotional valence score — as "positive" or "fearful," say — based on the occurrence of individual words that human curators have judged to be "positive" or "fearful" [@Mohammad2013].  While this technique is obviously useful for addressing research question 2, concerning the way HTT is represented in the trade media, its results should not be over-interpreted.  Specifically, the results depend heavily on the content of the reference lists; do not take into account sentence structure; and are easily confounded by irony and other complex rhetorical constructions. 
 
-Here a sentiment analysis tool was applied to every article in the corpus with a non-zero toxcast100 score.  The sentiment analysis tool estimates scores for ten emotional valences: "anger," "anticipation," "disgust," "fear," "joy," "sadness," "surprise," "trust," "negative," and "positive." Both raw (total frequency) and normalized (per 1,000 words in the article) sentiment scores were calculated.  
+This sentiment analysis tool was applied to every article in the corpus with a non-zero toxcast100 score.  The sentiment analysis tool estimates scores for ten emotional valences: "anger," "anticipation," "disgust," "fear," "joy," "sadness," "surprise," "trust," "negative," and "positive." Both raw (total frequency) and normalized (per 1,000 words in the article) sentiment scores were calculated.  
 
 ```{r sentiment-analysis-prep}
 toxcast_stories = dataf %>% filter(toxcast100 > 0) %>% mutate(id = row_number())
@@ -210,17 +210,19 @@ toxcast_stories = toxcast_stories_m %>%
 
 ## Results ##
 
-Publication date, title, byline, and full text were obtained for `r nrow(dataf)` articles. After normalization, the vocabulary included `r termdoc$nrow` distinct terms and a total of $`r sum(as.matrix(termdoc))`$ tokens (word-instances).  See figure \ref{fig.monthly}. The large spike in total length in February 2000 is due to five long, high-level EPA policy documents apparently republished by BNA.  
+Publication date, title, byline, and full text were obtained for `r nrow(dataf)` articles. After normalization, the vocabulary included `r termdoc$nrow` distinct terms and a total of $`r dataf %>% .[['length']] %>% sum`$ tokens (word-instances).  See figure \ref{fig.monthly}. The large spike in total length in February 2000 is due to five long, high-level EPA policy documents apparently republished by BNA.  Consequently, articles from February 2000 are generally excluded from the analyses below.  After excluding February 2000, the corpus contained 
+`r dataf %>% filter(month != ymd('2000-02-01')) %>% .[['length']] %>% sum` 
+tokens.  
 
-```{r articles_time, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'Overview of the BNA dataset. \\textbf{A}: Number of articles published each month. \\textbf{B} and \\textbf{C}: Total length of articles per month (total token acount after normalization).  \\textbf{C} omits months with more than 5,000 total tokens. \\label{fig.monthly}'}
+```{r articles_time, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'Overview of the BNA dataset. \\textbf{A}: Number of articles published each month. \\textbf{B} and \\textbf{C}: Total length of articles per month (total token acount after normalization).  \\textbf{C} omits `r dataf %>% filter(length > 5000) %>% nrow` months with more than 5,000 total tokens. \\label{fig.monthly}'}
 month_n_art_plot = ggplot(data = dataf, aes(x = month)) + 
-	geom_line(stat = 'count') + 
+	geom_line(stat = 'count', color = 'blue') + 
 	xlab('month') + ylab('no. articles')
 month_tot_len_plot = ggplot(data = dataf, aes(x = month, y = length)) +
-	geom_line(stat = 'sum', size = .25) + 
+	geom_line(stat = 'sum', size = .25, color = 'red') + 
 	ylab('total length')
 length_plot = plot_grid(month_tot_len_plot, month_tot_len_plot + ylim(0, 5000), 
-		  nrow = 1, labels = c('B', 'C'), hjust = c(0, 1))
+		  nrow = 1, labels = c('B', 'C'), hjust = 0)
 plot_grid(month_n_art_plot, length_plot, nrow = 2, labels = c('A', ''))
 ```
 
@@ -230,9 +232,11 @@ Table \ref{tab.toxcast100} shows the 100 terms most closely associated with "tox
 
 ```{r toxcast100}
 matrix(sort(toxcast100), nrow = 5) %>% t %>%
-	kable(col.names = rep('', 5), 
-		  caption = 'ToxCast 100 terms, normalized \\label{tab.toxcast100}', 
-		  format = 'latex')
+	as.data.frame() %>%
+	setNames(rep('', 5)) %>%
+	xtable(caption = 'ToxCast 100 terms, normalized \\label{tab.toxcast100}', 
+		  format = 'latex') %>%
+	print(hline.after = NULL)
 ```
 ```{r plot_monthly_scores, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'ToxCast scores. Scores are calculated as monthly total occurrences of "toxcast" and its 10, 100, or 1000 most closely-associated terms. Blue lines indicate linear regressions before and after January 2005. Articles from February 2000 are excluded from this plot. \\label{fig.monthly_scores}'}
 ## Plot the results
@@ -263,7 +267,10 @@ ggplot(data = {scores_month %>% filter(month != ymd('2000-02-01'))},
 	ylab('adjusted score')
 ```
 
-The first instance of "toxcast" was on `r scores_month %>% filter(terms == 'toxcast', score > 0) %>% .[['month']] %>% min`.  The plot suggests that, after January 2005, the term "toxcast" occurred more frequently but roughly constantly. The toxcast10 set shows a steady increase over the entire period 2000-2016; notably, toxcast100 and toxcast1000 show decreasing trends prior to January 2005, then increasing trends after this point.  Table \ref{tab.trends} confirms this visual impression, finding statistically significant differences in trends before and after January 2005 for the toxcast100 and toxcast1000 sets of terms.  
+The first instance of "toxcast" was on 
+`r scores_month %>% filter(terms == 'toxcast', score > 0) %>% .[['month']] %>% min %>% format(format = '%B %e, %Y')
+`.  
+The plot suggests that, after January 2005, the term "toxcast" occurred more frequently but roughly constantly. The toxcast10 set shows a steady increase over the entire period 2000-2016; notably, toxcast100 and toxcast1000 show decreasing trends prior to January 2005, then increasing trends after this point.  Table \ref{tab.trends} confirms this visual impression, finding statistically significant differences in trends before and after January 2005 for the toxcast100 and toxcast1000 sets of terms.  
 
 ```{r monthly_scores_coeff}
 ## Regression slopes before and after the threshold date
@@ -290,8 +297,8 @@ sapply(as.character(unique(scores_month$terms)), trends) %>%
 	mutate(rownames = c('Trend (Before)', 'Trend (After)', 'Trend (Before, SE)', 
 		  			  'Trend (After, SE)', 'Z', 'p')) %>%
 	select(rownames, toxcast:toxcast1k) %>%
-	kable(row.names = FALSE, 
-		  col.names = c('', 'toxcast', 'toxcast10', 'toxcast100', 'toxcast1000'),
+	setNames(c('', 'toxcast', 'toxcast10', 'toxcast100', 'toxcast1000')) %>%
+	xtable(#row.names = FALSE,
 		  caption = 'Comparison of linear trends before and after January 2005. Trend values are annual changes in the number of articles per month.  Z:  Z-scores for the difference in trends. p: p-values of Z-scores against null hypotheses of no differences in trends. Articles from February 2000 are excluded from this analysis  \\label{tab.trends}',
 		  format = 'latex'
 		  #digits = 3
@@ -313,11 +320,11 @@ dataf %>%
 	filter(month %in% interesting_months, toxcast100 > 0, 
 		   month != ymd('2000-02-01')) %>%
 	select(month, date, title, score = toxcast100) %>%
-	mutate(month = as.character(month), 
-		   date = as.character(date)) %>%
 	arrange(date) %>%
+	mutate(month = as.character(month), 
+		   date = as.character(date, format = '%B %e, %Y')) %>%
 	split(as.character(.$month)) %>%
-	lapply(function (x) {select(x, -month)}) %>%
+	lapply(function (x) {select(x, -month)}) %>% 
 	xtableList(align = 'clp{4in}r', 
 		  caption = 'Articles with non-zero toxcast100 scores, from months with total toxcast100 scores at least 120.  February 2000 is not included in this table.  \\label{tab.peaks}', digits = 0) %>%
 	print(include.rownames=FALSE, comment=FALSE, 
@@ -326,12 +333,12 @@ dataf %>%
 ```
 \clearpage
 
-The titles of the articles from these peaks indicate, first, that the toxcast100 score is a precise detector of CSS-relevant stories in BNA, with a low false positive rate (i.e., few articles with a high toxcast100 score but that are not relevant to CSS).  Second, the stories in these peaks are generally not about internal scientific developments, but instead about near- and medium-term regulatory uses of CSS tools.  However, third, stories that focus on specific hazards seem to have lower scores than stories that give broad overviews of high-throughput toxicology, at least within these peaks.  (Notably, the EDSP Pivot in June 2016 does not appear on this list; as far as I have been able to tell, BNA's only coverage of the EDSP Pivot was a brief note in one of the Federal Register overview articles.)  
+The titles of the articles from these peaks indicate, first, that the toxcast100 score is a precise detector of CSS-relevant stories in BNA, with a low false positive rate (i.e., few articles with a high toxcast100 score but that are not relevant to CSS).  Second, the stories in these peaks are generally not about internal scientific developments, but instead about near- and medium-term regulatory uses of CSS tools.  However, third, stories that focus on specific hazards seem to have lower scores than stories that give broad overviews of high-throughput toxicology, at least within these peaks.  (Notably, the EDSP Pivot in June 2016 does not appear on this list; as far as I have been able to tell, BNA's only coverage of the EDSP Pivot was a brief note in one of the *Federal Register* overview articles.)  
 
 
 ### Sentiment Analysis ###
 
-```{r sentiment-histograms, fig.cap = 'Kernel density estimates of length-normalized sentiment analysis scores.  Scores are on x-axis (note log scale), with densities on the y-axis. Vertical line indicates scores = 10 (1\\% of all article words). February 2000 is excluded from this plot. \\label{fig.sent_scores}'}
+```{r sentiment-histograms, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'Kernel density estimates of length-normalized sentiment analysis scores.  Scores are on x-axis (note log scale), with densities on the y-axis. Vertical line indicates scores = 10 (1\\% of all article words). February 2000 is excluded from this plot. \\label{fig.sent_scores}'}
 # Kernel density estimates of length-normalized sentiment analysis scores.  Scores are on x-axis (note log scale), with densities on the y-axis. Vertical line indicates scores = 10 (1\\% of all article words). February 2000 is excluded from this plot. \\label{fig.sent_scores}
 ggplot(filter(toxcast_stories_m, month != ymd('2000-02-01')), 
 	   aes(value.norm, fill = variable)) + 
@@ -347,7 +354,7 @@ keep_sents = c('anticipation', 'fear', 'trust', 'negative', 'positive')
 
 `r nrow(toxcast_stories)` stories had non-zero toxcast100 scores.  Figure \ref{fig.sent_scores} shows the distribution of sentiment analysis scores for each emotional valence across this set of stories, normalized by article length. Except for a substantial number of 0 scores, the distribution of scores for each valence is roughly log-Gaussian.  Anger, disgust, joy, sadness, and surprise have consistently low scores, so the analysis focuses on anticipation, fear, trust, negative, and positive.  
 
-```{r sentiment-time, fig.cap = 'Distribution of sentiment analysis scores over time.  Black lines indicate loess regressions. February 2000 is excluded from this plot.  \\label{fig.sent_scores_time}'}
+```{r sentiment-time, fig.width = 1.5*fig.width, fig.height = 1.5*fig.height, fig.cap = 'Distribution of sentiment analysis scores over time.  Black lines indicate loess regressions. February 2000 is excluded from this plot.  \\label{fig.sent_scores_time}'}
 ggplot({toxcast_stories_m %>% 
 		filter(variable %in% keep_sents, 
 			   month != ymd('2000-02-01'))},
@@ -367,7 +374,7 @@ sen_diff_density = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')),
 sen_diff_time = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')), 
 					   	aes(date, diff)) + geom_point(alpha = .25) +
 	geom_smooth(color = 'red') + ylab('positive - negative')
-plot_grid(sen_diff_density, sen_diff_time, labels = 'AUTO')
+plot_grid(sen_diff_density, sen_diff_time, labels = 'AUTO', hjust = 0)
 ```
 
 Figure \ref{fig.sent_scores_time} shows the distribution of sentiment scores over time, along with local regressions.  All five emotional valences are basically stable over time.  Notably, positive scores appear to be higher on average than negative scores. Figure \ref{fig.sen_dff} shows the distribution of the difference between positive and negative scores.  `r (1 - ecdf(toxcast_stories$diff)(0)) * 100`% of articles have a greater positive than negative score, and this positive difference is stable over time. 
@@ -386,7 +393,7 @@ toxcast100_neg_fit = lm(data = filter(toxcast_stories, month != ymd('2000-02-01'
 									  negative.x > 0),
 		log10(negative.x) ~ log10(toxcast100))
 plot_grid(toxcast100_pos_plot, toxcast100_neg_plot, nrow = 1, align = 'h', 
-		  labels = 'AUTO')
+		  labels = 'AUTO', hjust = 0)
 ```
 
 Figure \ref{fig.toxcast_sent} shows that there is no relationship between toxcast100 score and length-normalized positive scores.  There is a statistically significant ($p = `r summary(toxcast100_neg_fit)$coefficients[2,4]`$) negative association ($b = `r summary(toxcast100_neg_fit)$coefficients[2,1]`$) between toxcast100 score and negative valence; however, as indicated by the plot, this relationship is small and non-explanatory ($R^2 = `r summary(toxcast100_neg_fit)$r.squared`$). That is, coverage that is more focused on CSS-relevant research does not tend to be more or less positive, but does have a slight tendency to be less negative.  
@@ -400,16 +407,14 @@ sen_diff_density = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')),
 sen_diff_time = ggplot(filter(toxcast_stories, month != ymd('2000-02-01')), 
 					   aes(date, diff_trust)) + geom_point(alpha = .25) +
 	geom_smooth(color = 'red') + ylab('trust - fear')
-plot_grid(sen_diff_density, sen_diff_time, labels = 'AUTO')
+plot_grid(sen_diff_density, sen_diff_time, labels = 'AUTO', hjust = 0)
 ```
 
-Figure \ref{fig.sent_scores_time} also suggests that "trust" scores are generally greater than "fear" scores.  Figure \\ref{fig.sen_diff_trust} confirms this; trust scores are greater than fear scores for `r (1 - ecdf(toxcast_stories$diff_trust)(0)) * 100`% of articles.  
+Figure \ref{fig.sent_scores_time} also suggests that "trust" scores are generally greater than "fear" scores.  Figure \ref{fig.sen_diff_trust} confirms this; trust scores are greater than fear scores for `r (1 - ecdf(toxcast_stories$diff_trust)(0)) * 100`% of articles.  
 
 ## Discussion ##
 
 This study examined trade media coverage of CSS research using two text-mining techniques.  The first technique identified a set of standardized terms that appeared to be specific to CSS-relevant stories; this study showed increasing attention to CSS research since 2005, thereby addressing research question 1.  This change over time is due in part, though not entirely, to changes in the number of stories per month and the length of stories.  Coverage tends to be more relevant to CSS research when it deals with general or broad regulatory uses of this research in the short- and medium-term.  The second technique assessed the emotional valence of terms used in CSS-relevant stories, thereby addressing research question 2.  These stories were consistently more positive than negative, and expressed trust more than fear.  These patterns were consistent over time, and did not appear to be associated with the degree to which the article was CSS-relevant.  
-
-### Key Analytical Decisions ###
 
 The analysis in this study depends heavily on a substantial number of analytical decisions and assumptions.  Regarding the underlying data, key decisions include the terms used for the initial BNA search, and the inclusion/exclusion criteria used to refine the set of results.  Both of the subsequent analyses are based on simple word counts, which completely ignore structure and context; aggregate at the article or monthly level (rather than sentence, paragraph, quarter, or year); involve various decisions to use raw or normalized/adjusted scores or statistics; and use statistical techniques that assume Gaussian distributions and linearity.  For the "ToxCast" scores analysis, key decisions include decisions about how vocabulary would be standardized (which stopwords were removed, personal names were not identified and handled separately, common stems such as -s and -ing were not removed), the decision to use "toxcast" as the starting point for analysis, the use of Jaccard distance to identify associated terms, the size of the sets of associated terms (and the use of size, and rather than a distance threshold, to define these sets), and a choice of a date threshold.  The sentiment analysis depended heavily on a particular sentiment analysis tool, which in turn had its own substantive assumptions [@Mohammad2013]. 
 

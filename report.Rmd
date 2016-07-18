@@ -24,7 +24,8 @@ knitr::opts_chunk$set(dev = 'tikz',
 			   warning = FALSE, message = FALSE,
 			   cache = TRUE
 			   )
-options(digits = 2, xtable.comment = FALSE, xtable.caption.placement = 'top')
+options(digits = 2, xtable.comment = FALSE, xtable.caption.placement = 'top', 
+		xtable.include.rownames = FALSE)
 
 ## After http://stackoverflow.com/questions/18965637/set-global-thousand-separator-on-knitr
 knitr::knit_hooks$set(inline = function(x) {
