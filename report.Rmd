@@ -8,6 +8,7 @@ output:
         toc: true
 geometry: margin=1.5in
 tables: yes
+bibliography: /Users/dhicks1/Dropbox/latex/texmf/bibtex/bib/library.bib
 ---
 
 ```{r general_setup, echo = FALSE, warning = FALSE, messages = FALSE}
@@ -24,6 +25,15 @@ knitr::opts_chunk$set(dev = 'tikz',
 			   cache = TRUE
 			   )
 options(digits = 2, xtable.comment = FALSE, xtable.caption.placement = 'top')
+
+## After http://stackoverflow.com/questions/18965637/set-global-thousand-separator-on-knitr
+knitr::knit_hooks$set(inline = function(x) {
+	if (is.numeric(x)) {
+		format(x, big.mark=',', scientific = FALSE)
+	} else {
+		x
+	}
+})
 ```
 
 
@@ -34,7 +44,7 @@ options(digits = 2, xtable.comment = FALSE, xtable.caption.placement = 'top')
 
 # Introduction #
 
-Over the past forty years, *[something about a shift to research that has a social impact; maybe ref Silver Book?]*.  While researchers at the EPA have always been dedicated to research that aims to promote the public good *[fix this]*, they have placed less emphasis on developing empirical methods to measure and assess the social impacts of their work.  
+Over the past forty years, *[something about a shift to research that has a social impact; maybe ref Silver Book?]*.  While researchers at the EPA have always been dedicated to research that aims to protect human health and the environment, they have placed less emphasis on developing empirical methods to measure and assess the social impacts of their work.  
 
 For many areas of EPA research, there are established pathways for deploying research products in regulatory contexts.  The social impact of these research areas can be measured simply in terms of the impacts of the downstream regulation. Conventional air quality research or chemical risk assessments might be good examples of this "normal regulatory science."  However, other research areas — such as research that is actively developing new tools for public health or high-throughput toxicology — do not yet have established regulatory connections or simple regulatory metrics.  (The social impact of a screening prioritization decision for a potential endocrine disruptor, for example, is itself difficult to define.)  Assessing the social impact of these research areas requires more subtle tools.  
 
@@ -47,3 +57,5 @@ This report explores two quantitative approaches to assessing the social impact 
 
 ```{r, child = 'BNA.Rmd'}
 ```
+
+# References #
