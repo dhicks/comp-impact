@@ -21,7 +21,7 @@ knitr::opts_chunk$set(fig.height = fig.height, fig.width = fig.width,
 system2('python3', args = 'publications\\ data/scrape.py')
 ```
 
-```{r setup_analysis} 
+```{r setup_analysis, cache = FALSE} 
 library(cowplot)
 	ggplot2::theme_set(cowplot::theme_cowplot(font_size = font_size))
 library(dplyr)

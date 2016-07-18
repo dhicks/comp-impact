@@ -44,7 +44,7 @@ source('BNA data/parse_bna.R')
 source('BNA data/scrape_article_text.R')
 ```
 
-```{r setup}
+```{r setup_bna, cache = FALSE}
 library(cowplot)
 	theme_set(theme_cowplot(font_size = font_size))
 library(dplyr)
