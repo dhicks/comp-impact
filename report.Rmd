@@ -63,8 +63,8 @@ knitr::knit_hooks$set(inline = function(x) {
 - to push against the communication status quo:  
 	- encourage a more diverse range of tweeters to tweet about CSS research
 	- strategically emphasize topics that are underdisseminated, such as the smaller roles CSS research is playing through EPA
-	
-*[what happened to that l'oreal story?]*
+
+The analysis described in this study should be considered exploratory rather than confirmatory.  The analysis was not hypothesis-based, but instead aimed to show how text-mining tools could be used to examine a large body of trade media coverage and identify some interesting phenomena.  Some of these phenomena could be used as hypotheses for confirmatory studies; or they could be used to develop potential communication strategies, which could then be studied experimentally.  
 
 
 # Introduction #

@@ -48,6 +48,7 @@ source('BNA data/scrape_article_text.R')
 library(cowplot)
 	theme_set(theme_cowplot(font_size = font_size))
 library(dplyr)
+library(GGally)
 library(knitr)
 library(lme4)
 library(lubridate)
@@ -180,7 +181,7 @@ scores_month = scores_month %>%
 		   tot_length.rs = as.vector(scale(tot_length)))
 ```
 
-To examine coverage of CSS within this corpus, the analysis focused on the (normalized) term "toxcast" and associated terms, meaning terms that tend to appear in the same documents as "toxcast," as well as sets of the 100, 500, and 1000 terms most strongly associated with "toxcast".  "Scores," occurrence frequencies across each of the four sets of terms, were calculated for each document, as both raw totals and normalized by document length.  Finally, scores were aggregated by month and linear trends over time were examined.  
+To examine coverage of CSS within this corpus, the analysis focused on the (normalized) term "toxcast" and associated terms, meaning terms that tend to appear in the same documents as "toxcast," as well as sets of the 100, 500, and 1000 terms most strongly associated with "toxcast".  "Scores," occurrence frequencies across each of the four sets of terms, were calculated for each document, as both raw totals and normalized by document length.  Finally, scores were aggregated by month and linear trends over time were examined.  *[distances calculating including February 2000]*
 
 
 ### Sentiment Analysis ###
@@ -423,7 +424,140 @@ This study examined trade media coverage of CSS research using two text-mining t
 
 The analysis in this study depends heavily on a substantial number of analytical decisions and assumptions.  Regarding the underlying data, key decisions include the terms used for the initial BNA search, and the inclusion/exclusion criteria used to refine the set of results.  Both of the subsequent analyses are based on simple word counts, which completely ignore structure and context; aggregate at the article or monthly level (rather than sentence, paragraph, quarter, or year); involve various decisions to use raw or normalized/adjusted scores or statistics; and use statistical techniques that assume Gaussian distributions and linearity.  For the "ToxCast" scores analysis, key decisions include decisions about how vocabulary would be standardized (which stopwords were removed, personal names were not identified and handled separately, common stems such as -s and -ing were not removed), the decision to use "toxcast" as the starting point for analysis, the use of Jaccard distance to identify associated terms, the size of the sets of associated terms (and the use of size, and rather than a distance threshold, to define these sets), and a choice of a date threshold.  The sentiment analysis depended heavily on a particular sentiment analysis tool, which in turn had its own substantive assumptions [@Mohammad2013]. 
 
-While these decisions and assumptions do not invalidate the study's findings, it is highly plausible that they have made a difference in the findings — that the findings would have been different if decisions had been made differently — which does complicate the interpretation of the findings.  Further, because of the large number of decisions and assumptions, it is impractical to check the robustness of these findings by surveying the entire space of possible analyses.  
+While these decisions and assumptions do not invalidate the study's findings, it is highly plausible that they have made a difference in the findings — that the findings would have been different if decisions had been made differently — which does complicate the interpretation of the findings.  This point is illustrated by the robustness analysis of the construction of the toxcast100 sets given in the Appendix.  However, because of the large number of decisions and assumptions, it is impractical to check the robustness of these findings by surveying the entire space of possible analyses.  
 
-The analysis described in this study should be considered exploratory rather than confirmatory.  The analysis was not hypothesis-based, but instead aimed to show how text-mining tools could be used to examine a large body of trade media coverage and identify some interesting phenomena.  Some of these phenomena could be used as hypotheses for confirmatory studies; or they could be used to develop potential communication strategies, which could then be studied experimentally.  
+
+## Appendix: Robustness Analysis of Four Term-Distance Metrics ##
+
+This subsection examines concordance and discordance between four different ways of calculating distances from "toxcast" in the BNA vocabulary, and thus four different ways of determining which terms are included in the toxcast100 set.  In paticular, two different metrics are considered — Jaccard distance and L1 norm — across every article in the dataset and excluding February 2000 articles.  
+
+Jaccard distance is typically used to compare the distance between two sets $A$ and $B$.  In set-theoretic notation, Jaccard distance is defined as 
+$$ d_J(A, B) = 1 - \frac{|A \cap B|}{|A \cup B|},$$
+or 1 minus the fraction of elements that are in both sets.  Applied to the BNA vocabulary, a term's associated set is the set of all documents that use the term at least once.  Then, for two terms $A$ and $B$, their union $A \cup B$ is the set of all documents that use at least one of the two terms, and their intersection $A \cap B$ is the set of all documents that use both of the terms.  Note that this distance does not take into account how frequently a term occurs *within* a given document.  Jaccard distances range from 0 to 1, where 0 means the two terms occur in exactly the same documents and 1 means the terms never occur together.  
+
+The L1 norm takes within-document frequencies into account.  For a term $A$, let $a_i$ be the number of times it occurs in the $i$th document.  Then the L1 norm is
+$$ d_1(A, B) = \sum_i |a_i - b_i|, $$
+or the sum of the absolute difference in frequencies across every document.  The minimum value of L1 distance is 0, but unlike the Jaccard distance there is no maximum L1 distance.  
+
+Two terms can have a small Jaccard distance and a large L1 distance if they occur in exactly the same documents (so that their intersections and unions are the same), but one term occurs much much more often than the other (so that the absolute differences in frequencies are large).  Two terms can have a small L1 distance and a large Jaccard distance if they are both very rare (so that the absolute differences in frequencies are always 0 or small) but never occur together (so that their intersection is 0).  
+
+The analysis in the main body of this study used Jaccard distance across the full set of articles (i.e., including February 2000) to define the toxcast10, toxcast100, and toxcast1000 sets.  To analyze the implications of this analytical choice, we calculate distances from "toxcast" across both the full set of articles and across a "restricted" set that excludes February 2000, using both Jaccard and L1 metrics.  
+
+```{r dist_robustness}
+## Distance calculation robustness analysis
+## Extract the toxcast row
+toxcast = as.matrix(termdoc)['toxcast',]
+## February 2000 articles
+feb2000 = which(dataf$month == ymd('2000-02-01'))
+#as.matrix(termdoc)[,-feb2000]
+
+## Jaccard, full dataset
+dist_Jf = apply(as.matrix(termdoc), 1,
+		function (x) 1 - sum((x * toxcast) > 0) / 
+	  					sum((x + toxcast) > 0))
+## Jaccard, excluding Feb 2000
+dist_Jx = apply(as.matrix(termdoc)[,-feb2000], 1,
+	function (x) 1 - sum((x * toxcast[-feb2000]) > 0) / 
+					sum((x + toxcast[-feb2000]) > 0))
+
+## L1, full 
+dist_1f = apply(as.matrix(termdoc), 1, function (x) sum(abs(x - toxcast)))
+## L1, excluding Feb 2000
+dist_1x = apply(as.matrix(termdoc)[,-feb2000], 1, 
+				function (x) sum(abs(x - toxcast[-feb2000])))
+
+## Combine the distances into one dataframe
+dist_df = data.frame(jf = dist_Jf, jx = dist_Jx, l1f = dist_1f, l1x = dist_1x)
+## Calculate rankings and filter to terms in at least one toxcast100
+dist_df_r = dist_df %>% mutate_each(funs(min_rank)) %>% 
+	filter(jf <= 100|jx <= 100|l1f <= 100|l1x <= 100) %>%
+	setNames(c('Jaccard.full', 'Jaccard.restricted',
+			   'L1.full', 'L1.restricted'))
+```
+
+```{r dist_pairs_plot, fig.height = 2 * fig.height, fig.width = 2 * fig.width, fig.cap = 'Pairs plot for four ways of calculating distances from "toxcast" in the BNA vocabulary, for terms included in at least one of the four toxcast100 sets.  \\textbf{Main diagonal}: X-axis values are rankings, where 1 = "toxcast".  Curves are kernel density estimates of distribution of ranking values.  \\textbf{Lower triangle}: Scatterplots of ranking values across pairs of distance calculations.  Black lines are linear regressions.  \\textbf{Upper triangle}: Pearson correlation coefficients on pairs of rankings, equivalent to Spearman rank correlation coefficients on distance calculations. \\label{fig.dist_pairs}', fig.keep = 'last'}
+## Pairs plot of distance values across every term
+#ggscatmat(dist_df) + theme_gray() + ylab('') + xlab('')
+## Ranked and filtered
+dist_pairs_plot = ggpairs(dist_df_r, 
+		lower = list(continuous = wrap('smooth', color = 'blue')),
+		upper = list(continuous = wrap('cor', color = 'black')),
+		columnLabels = c('Jaccard\n(full)', 'Jaccard\n(restricted)',
+						'L1\n(full)', 'L1\n(restricted)')
+	) + theme(panel.background = element_rect(fill = 'grey95'),
+			  panel.grid = element_blank())
+dist_pairs_plot[3,1] = dist_pairs_plot[3,1] + 
+	coord_cartesian(ylim = c(0, max(dist_df_r$L1.full)))
+dist_pairs_plot[3,2] = dist_pairs_plot[3,2] + 
+	coord_cartesian(ylim = c(0, max(dist_df_r$L1.full)))
+dist_pairs_plot[4,1] = dist_pairs_plot[4,1] + 
+	coord_cartesian(ylim = c(0, max(dist_df_r$L1.restricted)))
+dist_pairs_plot[4,2] = dist_pairs_plot[4,2] + 
+	coord_cartesian(ylim = c(0, max(dist_df_r$L1.restricted)))
+
+## Rotate y-axis labels horizontally
+## after http://stackoverflow.com/questions/28427572/manipulating-axis-titles-in-ggpairs-ggally
+print(dist_pairs_plot, left = .75, bottom = .75)
+g <- grid::grid.ls(print=FALSE)
+idx <- g$name[grep("text", g$name)]
+for (i in idx[1:4]) {
+	grid::grid.edit(grid::gPath(i), rot = 0, hjust = 0, gp = grid::gpar(cex = .75))
+}
+for (i in idx[5:8]) {
+	grid::grid.edit(grid::gPath(i), vjust = -.5, gp = grid::gpar(cex = .75))
+}
+```
+
+Figure \ref{fig.dist_pairs} shows scatterplots and correlation coefficients for each pair of these distance calculations, for `r nrow(dist_df_r)` terms that are included in each at least one toxcast100 set.  The plot indicates strong aggreement between full and restricted calculations, but strong disagreement between Jaccard and L1 distances.  Similarly, \ref{fig.incl_pairs} shows scatterplots and correlation coefficients for inclusion in the toxcast100 sets.  There is strong agreement between full and restricted calculations using the same metric, but almost complete disagreement between the two metrics, i.e., the two metrics produced almost completely different toxcast100 sets.  
+
+```{r incl_pairs_plot, fig.height = 2 * fig.height, fig.width = 2 * fig.width, fig.cap = 'Pairs plot for four ways of determining membership in toxcast100 sets.  \\textbf{Lower triangle}: Inclusion/exclusion size plots.  Size of rectangles corresponds to number of terms in each cell of the subplot.  Upper-left cell corresponds to terms in both toxcast100 sets; upper-right cell corresponds to terms in the y-axis set but not the x-axis set; and so on.  \\textbf{Upper triangle}: Pearson correlation coefficient for set membership, taking inclusion = 1, exclusion = 2. \\label{fig.incl_pairs}', fig.keep = 'last' }
+## Inclusion/exclusion for toxcast100 sets
+dist_df_inex = dist_df_r %>% mutate_each(funs(. <= 100)) %>% 
+	mutate_each(funs(factor(., levels = c('TRUE', 'FALSE'))))
+my_custom_cor = function(data, mapping, color = I("black"), ...) {
+	x = eval(mapping$x, data) %>% as.numeric()
+	y = eval(mapping$y, data) %>% as.numeric()
+	ct = cor(x, y)
+	## Use Cramér's V
+	#ct = lsr::cramersV(x, y)
+	
+	ggally_text(
+		label = paste('Corr:', format(ct, digits = 3), sep = '\n'),
+		mapping = aes(),
+		xP = 0.5, yP = 0.5,
+		color = color,
+		...
+	)
+}
+incl_pairs_plot = ggpairs(dist_df_inex, 
+		columnLabels = c('Jaccard\n(full)', 'Jaccard\n(restricted)',
+						 'L1\n(full)', 'L1\n(restricted)'),
+		#axisLabels = 'internal',
+		lower = list(
+			'discrete' = 'ratio'
+			), 
+		upper = list(
+			#'discrete' = 'blank'
+			'discrete' = my_custom_cor
+			)
+		, diag = list('discrete' = 'blankDiag')
+	) + theme(panel.background = element_rect(fill = 'grey95'), 
+			  panel.grid = element_blank())
+
+## Rotate y-axis labels horizontally
+## after http://stackoverflow.com/questions/28427572/manipulating-axis-titles-in-ggpairs-ggally
+print(incl_pairs_plot, left = .75, bottom = .75)
+g <- grid::grid.ls(print=FALSE)
+idx <- g$name[grep("text", g$name)]
+for (i in idx[1:4]) {
+	grid::grid.edit(grid::gPath(i), rot = 0, hjust = 0, gp = grid::gpar(cex = .75))
+}
+for (i in idx[5:8]) {
+	grid::grid.edit(grid::gPath(i), vjust = -.5, gp = grid::gpar(cex = .75))
+}
+```
+
+Decisions about which metric to use had a substantial downstream effect on the findings of this study.  An early version of this study used the L1 norm, rather than Jaccard distance.  The former norm generates a list of toxcast100 terms that includes several obvious typos, such as "dataespecially," suggesting that the construction was substantially picking other rare terms, rather than terms that were actually semantically related to "toxcast."  As indicated by table \ref{tab.??}, Jaccard distance produces a much more meaningful set of terms.  Using the L1 norm, the especially high-scoring months were January 2009, March 2011, March 2012, April 2014, and October 2014.  Except for October 2014, none of these months were especially high-scoring using the Jaccard metric.  Among other things, this meant that a story from March 2012 about a partnership between EPA and L'Oréal was prominent when the L1 norm was used, but no longer prominent once the Jaccard norm was adopted instead.  Thus, a subtle analytical decision — which mathematical function to use to calculate distances between pairs of terms — can have substantial downstream effects.  
+
+All together, the toxcast100 term lists cannot be considered robust.  Their construction, use, and interpretation should be tailored carefully to the particular aims of any given analysis.  
 
