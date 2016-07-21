@@ -6,9 +6,15 @@ output:
         fig_caption: true
         number_sections: true
         toc: true
+    word_document:
+        fig_caption: true
+        number_sections: true
+        toc: true
 geometry: margin=1.5in
 tables: yes
 bibliography: /Users/dhicks1/Dropbox/latex/texmf/bibtex/bib/library.bib
+header-includes:
+    - \usepackage{pdflscape}
 ---
 
 ```{r general_setup, echo = FALSE, warning = FALSE, messages = FALSE}
@@ -45,44 +51,103 @@ knitr::knit_hooks$set(inline = function(x) {
 ```
 
 
+\clearpage
+
 # Executive Summary #
 
-*[write this]*
+This report presents two quantitative studies of the social impact of high-throughput toxicology [HTT] research conducted under the auspices of EPA's Chemical Safety for Sustainability [CSS] national research program.  Both assessment approaches rely on data-intensive, computational tools; the first examines the Twitter profile to CSS research, while the second applies text mining tools to analyze 15 years of reporting by Bloomberg BNA.  Besides reporting some preliminary findings, this report also examines data- and model-based challenges to deploying these tools, and offers suggestions for how EPA can improve its ability to use these tools in the future.  This report has the following major findings and recommendations:  
 
-- printed/electronic speech acts are easy to study, because by definition they leave tangible records that can be gathered with relatively little effort
-- effects on the audience are more difficult to study, because 
-	- there are not necessarily tangible records of their reactions, etc.
-	- the audience itself may not be well-defined
-	- the goals of communication may not be well-defined
-	- who are you trying to influence, and what do you want them to do differently? 
-	
-	
-- to work within the communication status quo described in this report:
-	- encourage high-tweeting accounts to tweet more
-	- strategically emphasize topics that receive more attention, such as the way CSS research will be used under the new TSCA
-- to push against the communication status quo:  
-	- encourage a more diverse range of tweeters to tweet about CSS research
-	- strategically emphasize topics that are underdisseminated, such as the smaller roles CSS research is playing through EPA
+- About one-third of CSS publications received any attention on Twitter.  Papers that receive tweets reach a large but highly variable audience, on the order of 100-10,000 accounts per paper.  
+- Several Twitter accounts produced either 5 or more tweets of CSS papers, shared CSS papers with an estimated total of over potential 10,000 views, or both.  
+- Tweets often occur within a short period of time after a paper is published, two weeks or less.  However, there is also a long right tail, with a few papers receiving tweets years after they are published.  
 
-The analysis described in this study should be considered exploratory rather than confirmatory.  The analysis was not hypothesis-based, but instead aimed to show how text-mining tools could be used to examine a large body of trade media coverage and identify some interesting phenomena.  Some of these phenomena could be used as hypotheses for confirmatory studies; or they could be used to develop potential communication strategies, which could then be studied experimentally.  
+- Bloomberg BNA's coverage of ToxCast and related topics has increased since 2005.  This change is due in part, but not entirely, to changes in the length and number of articles on ToxCast-related topics.  
+- Coverage is highly variable over time.  Months with especially high levels of coverage typically include multiple stories on general near- and medium-term regulatory uses of CSS research.  
+- Coverage of CSS research was almost always more positive than negative, and almost always more trusting than fearful.  These patterns did not change over time.   
+- A major challenge for studying the impact of CSS publications is the initial task of assembling a suitable list of publications.  In the future, modifications to STICS could be used to collect DOIs for published papers, which would greatly facilitate bibliometric studies.  
+- A major challenge for studying CSS-related media coverage using computational tools is that these tools are highly dependent on a large number of assumptions and analytical decisions, and that the resulting analyses are not necessarily robust.  In the future, computational media analysis should be carefully tailed to specific analytical questions.  Exploratory media analysis can be used to develop precise hypotheses or comunications strategies, which can then be tested using confirmatory methods.  
 
+
+\clearpage
 
 # Introduction #
 
-Over the past forty years, *[something about a shift to research that has a social impact; maybe ref Silver Book?]*.  While researchers at the EPA have always been dedicated to research that aims to protect human health and the environment, they have placed less emphasis on developing empirical methods to measure and assess the social impacts of their work.  
+On July 5 1945, two months after the unconditional surrender of German forces and one month before the detonation of nuclear weapons over Hiroshima and Nagasaki, Director of the White House Office of Scientific Research and Development Vannevar Bush transmitted to President Truman a report on government support for scientific research.  *Science, the Endless Frontier* provided the intellectual foundation for the National Science Foundation:  basic scientific research, provisioned with resources and directed by scientific curiosity alone, would produce technological advances to improve health, ensure national security, and drive economic growth [@Bush1945].  
 
-For many areas of EPA research, there are established pathways for deploying research products in regulatory contexts.  The social impact of these research areas can be measured simply in terms of the impacts of the downstream regulation. Conventional air quality research or chemical risk assessments might be good examples of this "normal regulatory science."  However, other research areas — such as research that is actively developing new tools for public health or high-throughput toxicology — do not yet have established regulatory connections or simple regulatory metrics.  (The social impact of a screening prioritization decision for a potential endocrine disruptor, for example, is itself difficult to define.)  Assessing the social impact of these research areas requires more subtle tools.  
+In 1997, NSF's National Science Board introduced a significant change to the merit criteria used to review grant proposals.  Scientific research would be evaluated not just on its intellectual merit, but also by its "broader impacts."  Rather than simply assuming, as Bush had done, that basic scientific research would (somehow, automatically) produce new technology would (somehow, automatically) produce social benefits, NSF directed prospective grantees to include in their proposals explicit discussions of what social benefits would result from their research, and how these benefits would be realized.  [For critical discussion of the limited success of the broader impacts criterion, see @Holbrook2005; @Holbrook2013.]
 
-This report explores two quantitative approaches to assessing the social impact of CSS research.  Both approaches rely on data-intensive, computational tools.  The report examines data and model-based challenges to deploying and interpreting the outputs of these tools; besides reporting some preliminary findings, this report also offers suggestions for how EPA can improve its ability to use these tools to assess and improve the social impact of its research.  
+In an important sense, researchers at EPA have never fit within the simple division between basic and applied science.  EPA research has always been dedicated to the ultimate aim of protecting human health and the environment, and in this sense does not share the pure curiosity, science-for-science's-sake of "basic research."  At the same time, EPA researchers have been and continue to be important innovators, often working at the leading scientific edge; they have not merely applied pre-existing scientific tools.
 
-*[more details]*
+Despite this overarching aim on social impacts, EPA researchers have placed relatively little emphasis on developing empirical methods to measure and assess the social impacts of their work.  In part this may be because, for many areas of EPA research, there are well-established pathways for deploying research products in regulatory contexts.  The social impact of these research areas can be measured simply in terms of the impacts of the downstream regulation.  Conventional air quality research or chemical risk assessments might be good examples of this "normal regulatory science."  However, other research areas — such as research that is actively developing new tools for public health or high-throughput toxicology — do not yet have established regulatory connections or simple regulatory metrics.  The social impact of a screening prioritization decision for a potential endocrine disruptor, for example, is itself difficult to define.  Assessing the social impact of these research areas requires more subtle tools.  
 
-*[note on reproducibility]*
+This report presents two quantitative studies of the social impact of high-throughput toxicology [HTT] research conducted under the auspices of EPA's Chemical Safety for Sustainability [CSS] national research program.  Both assessment approaches rely on data-intensive, computational tools; the first examines the Twitter profile to CSS research, while the second applies text mining tools to analyze 15 years of reporting by Bloomberg BNA.  Besides reporting some preliminary findings, this report also examines data- and model-based challenges to deploying these tools, and offers suggestions for how EPA can improve its ability to use these tools in the future. 
+
+This report is fully reproducible; indeed, the figures and tables below are generated automatically by a collection of Python and R scripts.  The complete source code for this report, along with the data sources required to reproduce it, are open source and available online at *[GitHub repo]*. Details on how to reproduce the report are given in its source code.  
+
+```{reproducibility, eval = FALSE}
+
+## Reproducing this report ##
+
+Reproducing this report from scratch requires, at minimum, an installation of R <https://www.r-project.org/>, with a number of packages installed, and the files in the file tree below.  Several scripts used in data collection assume a Python 3 installation with further dependencies.  To simplify reproducibility and shorten compilation time for the report, these scripts are not run; but code to run them can be found at appropriate locations in the report.  See those scripts for details on their dependencies.  
+
+One these prerequisites are satisfied, the report can be generated from the source code in either of two simple ways.  
+
+1. From any R console, with the working directory set to the folder containing the file report.Rmd, run the following command:  
+	knitr::knit('report.Rmd')
+
+2. From within the RStudio IDE, with the working directory set to the folder containing the file report.Rmd, open report.Rmd and click on the "Knit PDF" button at the top of the file pane.  
+
+
+### File Tree ###
+
+Descending vertical lines indicate file dependencies.  Brackets [A] indicate optional dependencies — the manuscript can be compiled as-is without satisfying these dependencies, though some elements may be missing or incomplete.  Arrows A <- B + C indicate that file A is produced in combination by files B and C.  
+
+- report.Rmd
+    |- altmetrics.Rmd
+    |   |- altmetrics-data.Rmd
+    |   |   |- publications data/scraped pubs/ids_css.json <-
+    |   |   |   [publications data/extract_ids_CSS.py + 
+    |   |   |    publications data/database outputs/CSS pubs 2016-03-02.xml]
+    |   |   |- publications data/scraped pubs/ids_ncct.csv <-
+    |   |   |   [publications data/extract_ids_NCCT.py +
+    |   |   |    publications data/database outputs/ToxCastTox21_sifter.csv]
+    |   |   |- publications data/scraped pubs/stics_q.csv, 
+    |   |   |   publications data/scraped pubs/stics_uq.csv <-
+    |   |   |   [publications data/stics_to_doi.py + 
+    |   |   |    publications data/database outputs/STICS output 2016-03-29.csv]
+    |   |   |-> publications data/scraped pubs/combined dois.json
+    |   |- altmetrics-analysis.Rmd
+    |       |- publications data/scraped pubs/combined dois.json <- 
+    |       |   [altmetrics-data.Rmd]
+    |       |- publications data/twitter/metadata.csv, 
+    |          publications data/twitter/tweets.csv, 
+    |          publications data/twitter/tweeters.csv <-
+    |           [publications data/scrape.py + 
+    |            publications data/scraped pubs/combined dois.json]
+    |- BNA.Rmd
+    |   |- [BNA.csv] <-     
+    |   |   [BNA data/parse_bna.R + 
+    |   |    BNA data/XML/2000-2004.xml + 
+    |   |    BNA data/XML/2005-2009.xml +
+    |   |    BNA data/XML/2010-2014.xml + 
+    |   |    BNA data/XML/2015-2016.xml]
+    |   |- BNA data/CSV/BNA.text.csv <- 
+    |       [BNA data/scrape_article_text.R + BNA.csv]
+    |- [library.bib]
+    	* In the YAML header at the top of this file, modify the bibliography value
+
+### Dependencies ###
+*[dependencies]*
+```
 
 ```{r, child = 'altmetrics.Rmd'}
 ```
 
+\clearpage
+
 ```{r, child = 'BNA.Rmd'}
 ```
+
+\clearpage
 
 # References #
