@@ -12,7 +12,7 @@ output:
         toc: true
 geometry: margin=1.5in
 tables: yes
-bibliography: /Users/dhicks1/Dropbox/latex/texmf/bibtex/bib/library.bib
+bibliography: references.bib
 header-includes:
     - \usepackage{pdflscape}
 ---
@@ -133,8 +133,7 @@ Descending vertical lines indicate file dependencies.  Brackets [A] indicate opt
     |   |    BNA data/XML/2015-2016.xml]
     |   |- BNA data/CSV/BNA.text.csv <- 
     |       [BNA data/scrape_article_text.R + BNA.csv]
-    |- [library.bib]
-    	* In the YAML header at the top of this file, modify the bibliography value
+    |- references.bib
 
 ### Dependencies ###
 
