@@ -59,6 +59,13 @@ library(tm)
 library(xtable)
 ```
 ```{r load_data}
+## Is the Bloomberg BNA data file unzipped?  
+bna_file = 'BNA data/CSV/BNA.text.csv'
+if (!file.exists(bna_file)) {
+	unzip(paste(bna_file, '.zip', sep = '')
+		  #,list = TRUE
+		  )
+}
 ## Load Bloomberg BNA data
 dataf = read.csv('BNA data/CSV/BNA.text.csv', stringsAsFactors = FALSE)
 dataf = dataf %>% transmute(date = {dmy_hms(pubDate) %>% 
