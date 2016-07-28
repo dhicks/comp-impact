@@ -137,7 +137,12 @@ Descending vertical lines indicate file dependencies.  Brackets [A] indicate opt
     	* In the YAML header at the top of this file, modify the bibliography value
 
 ### Dependencies ###
-*[dependencies]*
+
+To install all R dependencies at once, run the following command in an R console: 
+
+install.packages(c('knitr', 'cowplot', 'dplyr', 'rjson', 'reshape2', 'xtable',
+					'lubridate', 'GGally', 'latex2exp', 'reshape2', 'syuzhet', 
+					'tm'))
 ```
 
 ```{r, child = 'altmetrics.Rmd'}
