@@ -82,7 +82,7 @@ Despite this overarching aim on social impacts, EPA researchers have placed rela
 
 This report presents two quantitative studies of the social impact of high-throughput toxicology [HTT] research conducted under the auspices of EPA's Chemical Safety for Sustainability [CSS] national research program.  Both assessment approaches rely on data-intensive, computational tools; the first examines the Twitter profile to CSS research, while the second applies text mining tools to analyze 15 years of reporting by Bloomberg BNA.  Besides reporting some preliminary findings, this report also examines data- and model-based challenges to deploying these tools, and offers suggestions for how EPA can improve its ability to use these tools in the future. 
 
-This report is fully reproducible; indeed, the figures and tables below are generated automatically by a collection of Python and R scripts.  The complete source code for this report, along with the data sources required to reproduce it, are open source and available online at *[GitHub repo]*. Details on how to reproduce the report are given in its source code.  
+This report is fully reproducible; indeed, the figures and tables below are generated automatically by a collection of Python and R scripts.  The complete source code for this report, along with the data sources required to reproduce it, are open source and available online at <https://github.com/dhicks/comp-impact>. Details on how to reproduce the report are given in its source code.  
 
 ```{reproducibility, eval = FALSE}
 
@@ -90,7 +90,7 @@ This report is fully reproducible; indeed, the figures and tables below are gene
 
 Reproducing this report from scratch requires, at minimum, an installation of R <https://www.r-project.org/>, with a number of packages installed, and the files in the file tree below.  Several scripts used in data collection assume a Python 3 installation with further dependencies.  To simplify reproducibility and shorten compilation time for the report, these scripts are not run; but code to run them can be found at appropriate locations in the report.  See those scripts for details on their dependencies.  
 
-One these prerequisites are satisfied, the report can be generated from the source code in either of two simple ways.  
+Once these prerequisites are satisfied, the report can be generated from the source code in either of two simple ways.  
 
 1. From any R console, with the working directory set to the folder containing the file report.Rmd, run the following command:  
 	knitr::knit('report.Rmd')
@@ -100,7 +100,7 @@ One these prerequisites are satisfied, the report can be generated from the sour
 
 ### File Tree ###
 
-Descending vertical lines indicate file dependencies.  Brackets [A] indicate optional dependencies — the manuscript can be compiled as-is without satisfying these dependencies, though some elements may be missing or incomplete.  Arrows A <- B + C indicate that file A is produced in combination by files B and C.  
+Descending vertical lines indicate file dependencies.  Brackets [A] indicate optional dependencies — the manuscript can be compiled as-is without satisfying these dependencies, though some elements may be missing or incomplete.  Arrows A <- B + C indicate that file A is produced in combination by files B and C.  Some far-upstream data files are not included in this repository.  
 
 - report.Rmd
     |- altmetrics.Rmd
